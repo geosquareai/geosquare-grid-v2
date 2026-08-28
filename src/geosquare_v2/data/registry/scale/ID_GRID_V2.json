@@ -1,0 +1,15 @@
+{
+  "domain_code": "ID",
+  "algorithm": "projection_factors_max_directional_boundary_vertices_v1",
+  "proj_version": "9.5.1",
+  "pyproj_version": "3.7.2",
+  "boundary_sha256": "adb38ba53ef172f63ffdc93da69827725cbd319c7b1d4b5c79ab08e5544b8fa3",
+  "sample_count": 20872,
+  "max_error_pct": 1.8711202983859199,
+  "max_error_coordinate_crs84": [
+    122.88672670000003,
+    -10.998410799999977
+  ],
+  "meridional_scale": 0.9999999999996122,
+  "parallel_scale": 1.0187112029838592
+}
