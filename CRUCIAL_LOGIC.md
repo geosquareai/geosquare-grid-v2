@@ -299,16 +299,16 @@ The current public encoder APIs do not accept a coordinate epoch or construct ti
 
 Grid identifiers become durable keys. Therefore profile data cannot be loose runtime configuration.
 
-Before `RegistryLoader` returns any profile, it verifies:
+Before `DbRegistryLoader` returns any profile, it verifies:
 
-1. the registry schema and RFC 8785 canonical JSON signature using a trusted external Ed25519 public key;
+1. the SHA-256 digest of the registry database file against a detached Ed25519 signature (`registry.db.sig`) using a trusted external public key;
 2. exact required PROJ version, `proj.db`, and declared resources;
-3. each profile's SHA-256 hash and identity;
+3. each domain's scale-metadata row hash and identity;
 4. grid/equal-area CRS WKT2 parsing and projected status;
-5. boundary and scale-metadata hashes; and
-6. safe artifact paths and unique domain IDs/codes.
+5. boundary file hashes; and
+6. safe artifact paths and unique domain IDs/codes (enforced by the database schema).
 
-The trust anchor is supplied outside the signed manifest. A manifest must not be allowed to nominate the key that trusts itself.
+The trust anchor is supplied outside the signed database. A registry database must not be allowed to nominate the key that trusts itself.
 
 ### 13.1 Release discipline
 
@@ -318,11 +318,11 @@ The included registry is a **candidate**, not a production declaration. To chang
 change reviewed source inputs
   → regenerate candidate artifacts
   → inspect hashes, WKT2, boundary provenance, and scale analysis
-  → sign the unsigned manifest with the approved private key
-  → distribute the signed registry and public trust anchor
+  → sign the unsigned registry database with the approved private key
+  → distribute the signed registry database and public trust anchor
 ```
 
-Never manually edit a signed JSON artifact. Never place a private signing key in source control, a release package, chat, or documentation attachment.
+Never manually edit a signed registry database. Never place a private signing key in source control, a release package, chat, or documentation attachment.
 
 ## 14. Practical decision guide
 

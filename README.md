@@ -58,15 +58,16 @@ from pathlib import Path
 from pyproj import CRS, Transformer
 
 from geosquare_v2.grid import GeosquareGrid
-from geosquare_v2.manifest import RegistryLoader
+from geosquare_v2.db import DbRegistryLoader
 
 project_root = Path(".")
 encoded_keys = json.loads((project_root / "registry-trust.json").read_text())
 trust = {key_id: base64.b64decode(value) for key_id, value in encoded_keys.items()}
 
-registry = RegistryLoader(
-    project_root / "src/geosquare_v2/data/registry",
+registry = DbRegistryLoader(
+    project_root / "src/db",
     trust,
+    boundary_root=project_root / "src/geosquare_v2/data/registry",
 ).load()
 
 profile = registry.get("ID")
@@ -193,16 +194,23 @@ Generated UDFs encode **projected X/Y metres in the profile grid CRS**; they do 
 
 ## Registry release and governance
 
-The registry loader is fail-closed. It checks the manifest signature, profile/boundary/scale hashes, CRS parseability, and the exact signed PROJ environment before profiles are available. A local PROJ upgrade or any artifact change requires a fresh generated and signed candidate.
+The registry is a signed SQLite database at `src/db/registry.db`, trusted via a detached
+Ed25519 signature (`src/db/registry.db.sig`) computed over the raw database file bytes.
+`DbRegistryLoader` is fail-closed: it checks the signature, profile/boundary/scale hashes,
+CRS parseability, and the exact signed PROJ environment before profiles are available. A
+local PROJ upgrade or any artifact change requires a freshly generated and signed candidate
+database. Boundary files (`src/geosquare_v2/data/registry/boundaries/*.geojson`) remain
+plain files on disk and are unaffected by this database.
 
-Never commit, distribute, or attach an Ed25519 private key. To create a new candidate after approved profile/boundary changes:
+Never commit, distribute, or attach an Ed25519 private key. To create a new candidate
+database after approved profile/boundary changes:
 
 ```zsh
 .venv/bin/python scripts/generate_release_candidates.py
-.venv/bin/python scripts/sign_registry.py \
+.venv/bin/python scripts/sign_registry_db.py \
   --private-key /secure/path/geosquare-registry-private.pem \
-  --input src/geosquare_v2/data/registry/registry.unsigned.v2.json \
-  --output src/geosquare_v2/data/registry/registry.v2.json \
+  --db src/db/registry.db \
+  --output src/db/registry.db.sig \
   --key-id geosquare-registry-2026-08
 ```
 
@@ -221,13 +229,15 @@ The focused suite covers scalar/GID/packed consistency, projected and WGS84 geom
 ## Project layout
 
 ```text
+src/db/                           Signed registry database (registry.db, registry.db.sig)
 src/geosquare_v2/                 Package source
-  data/registry/                  Signed candidate registry, profiles, boundaries, scale metadata
+  data/registry/boundaries/       Boundary GeoJSON files and source attribution
+  db.py                           SQLite schema, MigrationTool, DbRegistryLoader
   geometry.py                     Exact projected and densified WGS84 geometry
   polyfill.py                     Bounded fractional coverage
   batch.py                        NumPy, Pandas, Arrow encoders
   warehouse.py                    BigQuery, Snowflake, PostGIS UDF renderers
-scripts/                          Candidate generation and signing tools
+scripts/                          Candidate generation, migration, and signing tools
 tests/                            Focused conformance tests
 V2SPECS.md                        Normative V2 contract
 ARCHITECTURE_DECISIONS.md          Architecture decision record

@@ -17,6 +17,7 @@ from .batch import (
     encode_projected_numpy,
     encode_projected_pandas,
 )
+from .db import DbRegistryLoader, RegistryDomainSummary, list_registry_domains
 from .errors import CandidateLimitExceededError, GeosquareError, GeometryDependencyError
 from .geometry import projected_cell_geometry, wgs84_cell_geometry
 from .polyfill import CoverageMode, polyfill, polyfill_stream
@@ -36,14 +37,17 @@ __all__ = [
     "SUBDIVISIONS",
     "CanonicalCell",
     "CandidateLimitExceededError",
+    "DbRegistryLoader",
     "DomainProfile",
     "DomainRegistry",
     "GeosquareError",
     "GeometryDependencyError",
     "GeosquareGrid",
     "ProjectedBounds",
+    "RegistryDomainSummary",
     "RegistryLoader",
     "ReleaseProfile",
+    "list_registry_domains",
     "canonical_to_gid",
     "encode_lonlat_arrow",
     "encode_lonlat_numpy",

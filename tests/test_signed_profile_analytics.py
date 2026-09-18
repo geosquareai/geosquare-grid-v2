@@ -10,9 +10,9 @@ from pyproj import CRS, Transformer
 from shapely.geometry import box
 
 from geosquare_v2.batch import encode_projected_numpy
+from geosquare_v2.db import DbRegistryLoader
 from geosquare_v2.geometry import projected_cell_geometry, wgs84_cell_geometry
 from geosquare_v2.grid import GeosquareGrid
-from geosquare_v2.manifest import RegistryLoader
 from geosquare_v2.polyfill import CoverageMode, polyfill
 from geosquare_v2.warehouse import (
     render_bigquery_projected_encoder,
@@ -26,7 +26,11 @@ def signed_profiles():
     project_root = Path(__file__).parents[1]
     encoded_keys = json.loads((project_root / "registry-trust.json").read_text(encoding="utf-8"))
     trust = {key_id: base64.b64decode(value, validate=True) for key_id, value in encoded_keys.items()}
-    registry = RegistryLoader(project_root / "src/geosquare_v2/data/registry", trust).load()
+    registry = DbRegistryLoader(
+        trust,
+        project_root / "src/geosquare_v2/db",
+        boundary_root=project_root / "src/geosquare_v2/data/registry",
+    ).load()
     return {code: registry.get(code) for code in ("ID", "VN")}
 
 

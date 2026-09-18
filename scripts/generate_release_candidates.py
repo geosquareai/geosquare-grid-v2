@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate hash-pinned ID and VN V2 registry release candidates.
 
-The output manifest is deliberately unsigned. Run sign_registry.py locally with the
+The output database is deliberately unsigned. Run sign_registry_db.py locally with the
 private Ed25519 key after reviewing every generated artifact.
 """
 
@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
+import sys
+import tempfile
 from pathlib import Path
 from typing import Iterator
 
@@ -16,10 +19,13 @@ import pyproj
 from pyproj import CRS, Transformer
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from geosquare_v2.db import MigrationTool  # noqa: E402
+
 REGISTRY = ROOT / "src" / "geosquare_v2" / "data" / "registry"
 BOUNDARIES = REGISTRY / "boundaries"
-PROFILES = REGISTRY / "profiles"
-SCALE = REGISTRY / "scale"
+DB_ROOT = ROOT / "src" / "geosquare_v2" / "db"
 
 
 def sha256(path: Path) -> str:
@@ -106,6 +112,7 @@ def ensure_root_covers(boundary_path: Path, crs: CRS, origin_x: float, origin_y:
 
 def profile_document(
     *,
+    staging_root: Path,
     domain_id: int,
     domain_code: str,
     name: str,
@@ -117,9 +124,9 @@ def profile_document(
     origin_x: float = -25_000_000.0,
     origin_y: float = -25_000_000.0,
 ) -> dict:
-    boundary_path = BOUNDARIES / f"{domain_code}.geojson"
+    boundary_path = staging_root / "boundaries" / f"{domain_code}.geojson"
     ensure_root_covers(boundary_path, crs, origin_x, origin_y)
-    scale_path = SCALE / f"{domain_code}_GRID_V2.json"
+    scale_path = staging_root / "scale" / f"{domain_code}_GRID_V2.json"
     write_json(scale_path, scale_metadata(domain_code, boundary_path, crs))
     return {
         "domain_id": domain_id,
@@ -160,43 +167,61 @@ def main() -> None:
         4756,
         "+proj=lcc +lat_1=11 +lat_2=21 +lat_0=16 +lon_0=107.5 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +type=crs",
     )
-    id_profile = profile_document(
-        domain_id=1,
-        domain_code="ID",
-        name="Indonesia",
-        reference_epoch=2012.0,
-        crs_authority="GEOSQUARE:ID_SRGI2013_EQC_V2",
-        crs=id_crs,
-        boundary_file="../boundaries/ID.geojson",
-        boundary_source="geoBoundaries gbOpen IDN ADM0, IDN-ADM0-11942859, 2017, ODbL",
-    )
-    vn_profile = profile_document(
-        domain_id=2,
-        domain_code="VN",
-        name="Vietnam",
-        reference_epoch=2000.0,
-        crs_authority="GEOSQUARE:VN_VN2000_LCC_V2",
-        crs=vn_crs,
-        boundary_file="../boundaries/VN.geojson",
-        boundary_source="geoBoundaries gbOpen VNM ADM0, VNM-ADM0-46766057, 2016, CC-BY-4.0",
-    )
-    id_path, vn_path = PROFILES / "ID.v2.json", PROFILES / "VN.v2.json"
-    write_json(id_path, id_profile)
-    write_json(vn_path, vn_profile)
-    proj_db = Path(pyproj.datadir.get_data_dir()) / "proj.db"
-    manifest = {
-        "registry_version": "2.0.0",
-        "release_status": "candidate",
-        "proj_version_exact": pyproj.proj_version_str,
-        "proj_db_sha256": sha256(proj_db),
-        "required_proj_grids": [],
-        "domains": [
-            {"domain_id": 1, "domain_code": "ID", "profile_file": "profiles/ID.v2.json", "profile_sha256": sha256(id_path)},
-            {"domain_id": 2, "domain_code": "VN", "profile_file": "profiles/VN.v2.json", "profile_sha256": sha256(vn_path)},
-        ],
-    }
-    write_json(REGISTRY / "registry.unsigned.v2.json", manifest)
-    print("Generated release candidates: ID, VN")
+
+    with tempfile.TemporaryDirectory() as tmp_name:
+        staging_root = Path(tmp_name)
+        # Boundaries are a permanent on-disk asset (unchanged by the SQLite migration);
+        # stage a copy alongside the freshly generated profiles/scale metadata so hash
+        # verification and relative-path resolution behave exactly like the legacy layout.
+        shutil.copytree(BOUNDARIES, staging_root / "boundaries")
+
+        id_profile = profile_document(
+            staging_root=staging_root,
+            domain_id=1,
+            domain_code="ID",
+            name="Indonesia",
+            reference_epoch=2012.0,
+            crs_authority="GEOSQUARE:ID_SRGI2013_EQC_V2",
+            crs=id_crs,
+            boundary_file="../boundaries/ID.geojson",
+            boundary_source="geoBoundaries gbOpen IDN ADM0, IDN-ADM0-11942859, 2017, ODbL",
+        )
+        vn_profile = profile_document(
+            staging_root=staging_root,
+            domain_id=2,
+            domain_code="VN",
+            name="Vietnam",
+            reference_epoch=2000.0,
+            crs_authority="GEOSQUARE:VN_VN2000_LCC_V2",
+            crs=vn_crs,
+            boundary_file="../boundaries/VN.geojson",
+            boundary_source="geoBoundaries gbOpen VNM ADM0, VNM-ADM0-46766057, 2016, CC-BY-4.0",
+        )
+        id_path = staging_root / "profiles" / "ID.v2.json"
+        vn_path = staging_root / "profiles" / "VN.v2.json"
+        write_json(id_path, id_profile)
+        write_json(vn_path, vn_profile)
+
+        proj_db = Path(pyproj.datadir.get_data_dir()) / "proj.db"
+        manifest = {
+            "registry_version": "2.0.0",
+            "release_status": "candidate",
+            "proj_version_exact": pyproj.proj_version_str,
+            "proj_db_sha256": sha256(proj_db),
+            "required_proj_grids": [],
+            "domains": [
+                {"domain_id": 1, "domain_code": "ID", "profile_file": "profiles/ID.v2.json", "profile_sha256": sha256(id_path)},
+                {"domain_id": 2, "domain_code": "VN", "profile_file": "profiles/VN.v2.json", "profile_sha256": sha256(vn_path)},
+            ],
+        }
+        write_json(staging_root / "registry.v2.json", manifest)
+
+        DB_ROOT.mkdir(parents=True, exist_ok=True)
+        destination = DB_ROOT / "registry.db"
+        MigrationTool(staging_root).migrate(destination)
+
+    print(f"Generated unsigned release candidate database: {destination}")
+    print("Run scripts/sign_registry_db.py to produce registry.db.sig before distributing it.")
 
 
 if __name__ == "__main__":

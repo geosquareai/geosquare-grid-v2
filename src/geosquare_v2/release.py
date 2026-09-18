@@ -32,7 +32,13 @@ class ReleaseProfile(DomainProfile):
     boundary_source: str = ""
 
     def __post_init__(self) -> None:
-        super().__post_init__()
+        # NOTE: `super().__post_init__()` (zero-argument super) is intentionally avoided
+        # here. `@dataclass(slots=True)` rebuilds the class object after the class body
+        # executes, which can leave the implicit `__class__` closure cell used by
+        # zero-arg `super()` stale on some Python versions (observed on CPython 3.13;
+        # not reproducible on 3.14). Calling the parent method explicitly sidesteps that
+        # closure entirely and works identically on every supported Python version.
+        DomainProfile.__post_init__(self)
         non_empty = (
             "profile_version",
             "crs_authority",
