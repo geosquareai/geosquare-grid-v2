@@ -1,14 +1,14 @@
 {
   "domain_id": 2,
   "domain_code": "VN",
-  "name": "Vietnam",
+  "name": "Viet Nam",
   "origin_x_m": -25000000.0,
   "origin_y_m": -25000000.0,
   "root_side_m": 50000000.0,
   "reference_epoch": 2000.0,
   "grid_crs": "GEOSQUARE:VN_VN2000_LCC_V2",
   "equal_area_crs": "EPSG:8857",
-  "profile_version": "2.0.0-rc.1",
+  "profile_version": "2.0.0-rc.2-asean",
   "crs_authority": "GEOSQUARE:VN_VN2000_LCC_V2",
   "crs_wkt2": "PROJCRS[\"Geosquare Vietnam / VN-2000 Lambert Conformal Conic V2\",BASEGEOGCRS[\"VN-2000\",DATUM[\"Vietnam 2000\",ELLIPSOID[\"WGS 84\",6378137,298.257223563,LENGTHUNIT[\"metre\",1]]],PRIMEM[\"Greenwich\",0,ANGLEUNIT[\"degree\",0.0174532925199433]],ID[\"EPSG\",4756]],CONVERSION[\"unknown\",METHOD[\"Lambert Conic Conformal (2SP)\",ID[\"EPSG\",9802]],PARAMETER[\"Latitude of false origin\",16,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8821]],PARAMETER[\"Longitude of false origin\",107.5,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8822]],PARAMETER[\"Latitude of 1st standard parallel\",11,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8823]],PARAMETER[\"Latitude of 2nd standard parallel\",21,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8824]],PARAMETER[\"Easting at false origin\",0,LENGTHUNIT[\"metre\",1],ID[\"EPSG\",8826]],PARAMETER[\"Northing at false origin\",0,LENGTHUNIT[\"metre\",1],ID[\"EPSG\",8827]]],CS[Cartesian,2],AXIS[\"(E)\",east,ORDER[1],LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]],AXIS[\"(N)\",north,ORDER[2],LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]]]",
   "equal_area_crs_authority": "EPSG:8857",
@@ -16,11 +16,11 @@
   "min_level": 0,
   "max_level": 14,
   "scale_error_max_pct": 0.49218353763940126,
-  "scale_error_method": "projection_factors_max_directional_boundary_vertices_v1",
+  "scale_error_method": "projection_factors_max_directional_full_boundary_v2",
   "scale_error_evaluation_metadata": "../scale/VN_GRID_V2.json",
-  "scale_metadata_sha256": "0e3f5d664591b6ca466dd00d75b713ddb5d675eea13789a18f8ac1841397fa7b",
+  "scale_metadata_sha256": "73f7a96090910ef99a65cd289dfe8e492e9065d4a67c56ecffa62f2babc5ba49",
   "boundary_source_crs": "OGC:CRS84",
-  "boundary_file": "../boundaries/VN.geojson",
-  "boundary_sha256": "6d59ad13be1212956005f507fa2ed137b7d09b78320d3ae192e0fa412c530435",
-  "boundary_source": "geoBoundaries gbOpen VNM ADM0, VNM-ADM0-46766057, 2016, CC-BY-4.0"
+  "boundary_file": "../boundaries/VN_full.geojson",
+  "boundary_sha256": "2e82dbe0662f0f592902ef3e79011e438d63c7a356d43b3df0553b38866b501b",
+  "boundary_source": "geoBoundaries gbOpen VNM ADM0, VNM-ADM0-46766057, 2016, Creative Commons Attribution 4.0 International (CC BY 4.0)"
 }

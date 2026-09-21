@@ -1,5 +1,6 @@
 """Geosquare V2 profile-driven metric grid core."""
 
+from .boundary import BoundaryPredicate, OperationalBoundary
 from .codec import (
     BASE_2_MATRIX,
     BASE_5_MATRIX,
@@ -9,6 +10,17 @@ from .codec import (
     canonical_to_gid,
     gid_to_canonical,
 )
+from .aggregation import (
+    CategoryRule,
+    NumericRule,
+    RangeRule,
+    ValueSemantics,
+    aggregate_categorical,
+    aggregate_numeric,
+    aggregate_ordinal,
+    aggregate_range,
+    aggregate_to_cells,
+)
 from .batch import (
     encode_lonlat_arrow,
     encode_lonlat_numpy,
@@ -17,21 +29,57 @@ from .batch import (
     encode_projected_numpy,
     encode_projected_pandas,
 )
+from .conversion import (
+    GridCellRecord,
+    cell_to_geometry,
+    cells_to_geometry,
+    line_to_cells,
+    point_to_cell,
+    polygon_to_cell,
+    polygon_to_cells,
+)
 from .db import DbRegistryLoader, RegistryDomainSummary, list_registry_domains
-from .errors import CandidateLimitExceededError, GeosquareError, GeometryDependencyError
+from .errors import (
+    CandidateLimitExceededError,
+    GeosquareError,
+    GeometryDependencyError,
+    OutsideOperationalBoundaryError,
+    TableDependencyError,
+)
 from .geometry import projected_cell_geometry, wgs84_cell_geometry
 from .polyfill import CoverageMode, polyfill, polyfill_stream
 from .grid import GeosquareGrid
 from .manifest import RegistryLoader
+from .migration import LegacyV1Cell, LegacyV1Decoder, MigrationRecord, V1MigrationAdapter
 from .model import CanonicalCell, DomainProfile, ProjectedBounds
 from .packing import pack_int64, unpack_int64
 from .registry import DomainRegistry
 from .release import ReleaseProfile
+from .facade import GeosquareService, IndexedCell, parse_uri
+from .table import read_table, table_to_cells, table_to_cells_chunks, write_table
 
 __all__ = [
+    "BoundaryPredicate",
+    "OperationalBoundary",
     "BASE_2_MATRIX",
+    "CategoryRule",
+    "NumericRule",
+    "RangeRule",
+    "ValueSemantics",
+    "aggregate_categorical",
+    "aggregate_numeric",
+    "aggregate_ordinal",
+    "aggregate_range",
+    "aggregate_to_cells",
     "BASE_5_MATRIX",
     "CoverageMode",
+    "GridCellRecord",
+    "cell_to_geometry",
+    "cells_to_geometry",
+    "line_to_cells",
+    "point_to_cell",
+    "polygon_to_cell",
+    "polygon_to_cells",
     "MAX_LEVEL",
     "ROOT_SIDE_M",
     "SUBDIVISIONS",
@@ -42,7 +90,15 @@ __all__ = [
     "DomainRegistry",
     "GeosquareError",
     "GeometryDependencyError",
+    "OutsideOperationalBoundaryError",
+    "TableDependencyError",
+    "GeosquareService",
+    "IndexedCell",
     "GeosquareGrid",
+    "LegacyV1Cell",
+    "LegacyV1Decoder",
+    "MigrationRecord",
+    "V1MigrationAdapter",
     "ProjectedBounds",
     "RegistryDomainSummary",
     "RegistryLoader",
@@ -59,9 +115,14 @@ __all__ = [
     "pack_int64",
     "polyfill",
     "polyfill_stream",
+    "parse_uri",
     "projected_cell_geometry",
+    "read_table",
+    "table_to_cells",
+    "table_to_cells_chunks",
     "unpack_int64",
     "wgs84_cell_geometry",
+    "write_table",
 ]
 
 __version__ = "0.1.0"

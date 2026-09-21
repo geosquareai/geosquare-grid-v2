@@ -2,7 +2,7 @@
 
 A profile-driven, country-scoped hierarchical metric grid for durable spatial identifiers. Geosquare V2 encodes an exact square in a domain's declared projected CRS, with reproducible profile metadata, strict codecs, signed registry loading, fractional polygon coverage, vectorized interfaces, and warehouse UDF source generation.
 
-> **Release status: candidate.** The bundled Indonesia (`ID`) and Vietnam (`VN`) profiles are signed candidate release artifacts. Do not mark them production or edit registry artifacts in place; regenerate, review, and re-sign a new candidate instead.
+> **Release status: candidate.** The signed candidate registry contains all 11 ASEAN domains. Do not mark it production or edit registry artifacts in place. Regenerate, review, and re-sign a new candidate instead.
 
 ## What V2 guarantees
 
@@ -17,12 +17,49 @@ V2 is intentionally **not wire-compatible** with V1 or the earlier international
 
 ## Domains included
 
-| Domain | Canonical grid CRS | Equal-area coverage CRS | Reference epoch |
-|---|---|---|---:|
-| `ID` — Indonesia | `GEOSQUARE:ID_SRGI2013_EQC_V2` | EPSG:8857 Equal Earth | 2012.0 |
-| `VN` — Vietnam | `GEOSQUARE:VN_VN2000_LCC_V2` | EPSG:8857 Equal Earth | 2000.0 |
+| Domain | Candidate grid CRS | Equal-area coverage CRS | Reference epoch policy |
+|---|---|---|---|
+| `BN` — Brunei Darussalam | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `KH` — Cambodia | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `ID` — Indonesia | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `LA` — Lao PDR | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `MY` — Malaysia | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `MM` — Myanmar | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `PH` — Philippines | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `SG` — Singapore | local projected candidate | EPSG:8857 Equal Earth | static candidate |
+| `TH` — Thailand | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `TL` — Timor-Leste | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `VN` — Viet Nam | existing VN-2000 LCC | EPSG:8857 Equal Earth | 2000.0 |
 
 The full, authoritative CRS definitions and scale-error metadata are contained in the signed profiles, not abbreviated identifiers in this table.
+
+## Simple application API
+
+Use `GeosquareService` for normal application code. It creates the CRS transformer, encodes the GID, and returns a versioned URI.
+
+```python
+from geosquare_v2 import BoundaryPredicate, GeosquareService
+
+# registry is loaded with DbRegistryLoader, as shown below.
+service = GeosquareService(
+    registry,
+    boundary_root=project_root / "src/geosquare_v2/data/registry",
+)
+
+cell = service.point_to_cell(
+    "ID",
+    106.8456,
+    -6.2088,
+    level=9,
+    boundary_policy=BoundaryPredicate.COVERS_POINT,
+)
+
+print(cell.uri)
+print(cell.cell_edge_m)
+print(cell.scale_error_max_pct)
+```
+
+See [SERVICE_API.md](SERVICE_API.md) for point indexing, URI decoding, neighbours, distance, and polyfill examples.
 
 ## Installation
 
@@ -32,8 +69,8 @@ Requirements: Python 3.11+.
 # Scalar core plus signed registry loading
 python -m pip install -e ".[registry]"
 
-# Geometry/polyfill, NumPy/Pandas/Arrow, and tests
-python -m pip install -e ".[analytics,registry,dev]"
+# all analytics, table, and test adapters
+python -m pip install -e ".[analytics,registry,table,dev]"
 ```
 
 Optional dependency groups are pinned in `pyproject.toml`:
@@ -44,6 +81,7 @@ Optional dependency groups are pinned in `pyproject.toml`:
 | `geo` | PyProj and Shapely geometry operations |
 | `batch` | NumPy, Pandas, and Apache Arrow adapters |
 | `analytics` | Combined `geo` and `batch` runtime support |
+| `table` | Pandas, Arrow, and XLSX table adapters |
 | `dev` | Pytest test runner |
 
 ## Quick start: load a verified domain and encode a point
@@ -65,8 +103,8 @@ encoded_keys = json.loads((project_root / "registry-trust.json").read_text())
 trust = {key_id: base64.b64decode(value) for key_id, value in encoded_keys.items()}
 
 registry = DbRegistryLoader(
-    project_root / "src/db",
     trust,
+    project_root / "src/geosquare_v2/db",
     boundary_root=project_root / "src/geosquare_v2/data/registry",
 ).load()
 
@@ -142,6 +180,41 @@ coverage = polyfill(
 
 `GRID_PLANAR` calculates the ratio in the grid CRS. `EQUAL_AREA` calculates it through the profile's verified equal-area CRS and should be used for coastal, cross-projection, or published statistical coverage. Polyfill normalizes polygonal input, clips it to the root, applies its candidate limit **before** enumeration, and never silently filters by the country boundary.
 
+## Data-to-grid conversions
+
+Use the same naming pattern for every geometry operation:
+
+```python
+cells = service.polygon_to_cells(domain, polygon, "EPSG:4326", level=12)
+cell = service.polygon_to_cell(domain, polygon, "EPSG:4326", level=12)
+line_cells = service.line_to_cells(domain, line, "EPSG:4326", level=12)
+geometry = service.cell_to_geometry(cell.uri, output_crs="EPSG:4326")
+```
+
+The conversion records contain the cell ID and area or length ratios. Geometry is optional.
+
+For tabular data:
+
+```python
+assigned = service.table_to_cells(
+    "points.parquet",
+    "ID",
+    level=12,
+    longitude_column="longitude",
+    latitude_column="latitude",
+    keep_columns=["asset_id", "value"],
+)
+
+summary = service.aggregate_to_cells(
+    assigned,
+    value_type="numeric",
+    value_column="value",
+    rule="weighted_mean",
+)
+```
+
+See [DATA_TO_GRID_CONTRACT.md](DATA_TO_GRID_CONTRACT.md) for value semantics, category rules, range rules, and accuracy modes.
+
 ## Vectorized data interfaces
 
 NumPy is the numeric reference implementation for batch encoding. Pandas and Arrow adapters use the same vectorized kernels.
@@ -194,8 +267,8 @@ Generated UDFs encode **projected X/Y metres in the profile grid CRS**; they do 
 
 ## Registry release and governance
 
-The registry is a signed SQLite database at `src/db/registry.db`, trusted via a detached
-Ed25519 signature (`src/db/registry.db.sig`) computed over the raw database file bytes.
+The registry is a signed SQLite database at `src/geosquare_v2/db/registry.db`, trusted via a detached
+Ed25519 signature (`src/geosquare_v2/db/registry.db.sig`) computed over the raw database file bytes.
 `DbRegistryLoader` is fail-closed: it checks the signature, profile/boundary/scale hashes,
 CRS parseability, and the exact signed PROJ environment before profiles are available. A
 local PROJ upgrade or any artifact change requires a freshly generated and signed candidate
@@ -209,9 +282,9 @@ database after approved profile/boundary changes:
 .venv/bin/python scripts/generate_release_candidates.py
 .venv/bin/python scripts/sign_registry_db.py \
   --private-key /secure/path/geosquare-registry-private.pem \
-  --db src/db/registry.db \
-  --output src/db/registry.db.sig \
-  --key-id geosquare-registry-2026-08
+  --db src/geosquare_v2/db/registry.db \
+  --output src/geosquare_v2/db/registry.db.sig \
+  --key-id geosquare-registry-2026-09
 ```
 
 Review the generated diff, CRS definitions, distortion metadata, boundary provenance, and release authorization before signing. See [RELEASE_CANDIDATE.md](RELEASE_CANDIDATE.md) and [ARCHITECTURE_DECISIONS.md](ARCHITECTURE_DECISIONS.md) for the full process and rationale.
@@ -224,20 +297,24 @@ Review the generated diff, CRS definitions, distortion metadata, boundary proven
 .venv/bin/python -m pip check
 ```
 
-The focused suite covers scalar/GID/packed consistency, projected and WGS84 geometry, planar/equal-area fractional coverage, candidate limits, NumPy/Pandas/Arrow equivalence, UDF source invariants, and end-to-end paths through the signed ID/VN candidate profiles.
+The focused suite covers scalar/GID/packed consistency, projected and WGS84 geometry, planar/equal-area fractional coverage, candidate limits, NumPy/Pandas/Arrow equivalence, UDF source invariants, table and aggregation operations, migration, boundary policies, and end-to-end paths through the signed 11-domain ASEAN candidate profiles.
 
 ## Project layout
 
 ```text
-src/db/                           Signed registry database (registry.db, registry.db.sig)
+src/geosquare_v2/db/                           Signed registry database (registry.db, registry.db.sig)
 src/geosquare_v2/                 Package source
   data/registry/boundaries/       Boundary GeoJSON files and source attribution
   db.py                           SQLite schema, MigrationTool, DbRegistryLoader
+  facade.py                       Registry-backed application API
+  conversion.py                   Point, line, and polygon conversion
+  table.py                        CSV, XLSX, Parquet table adapters
+  aggregation.py                  Numeric, category, ordinal, range aggregation
   geometry.py                     Exact projected and densified WGS84 geometry
   polyfill.py                     Bounded fractional coverage
   batch.py                        NumPy, Pandas, Arrow encoders
   warehouse.py                    BigQuery, Snowflake, PostGIS UDF renderers
-scripts/                          Candidate generation, migration, and signing tools
+scripts/                          Candidate generation, migration, signing, and benchmarks
 tests/                            Focused conformance tests
 V2SPECS.md                        Normative V2 contract
 ARCHITECTURE_DECISIONS.md          Architecture decision record
@@ -246,8 +323,21 @@ RELEASE_CANDIDATE.md               Candidate release instructions
 
 ## Further reading
 
+- [Changelog](CHANGELOG.md)
+- [Complete documentation](docs/README.md)
+- [V2 product contract](PRODUCT_CONTRACT_V2.md)
+- [ASEAN cross-system benchmark](ASEAN_CROSS_SYSTEM_BENCHMARK.md)
+- [ASEAN squareness benchmark](ASEAN_SQUARENESS_BENCHMARK.md)
+- [Grid system comparison](GRID_SYSTEM_COMPARISON.md)
+- [Data-to-grid contract](DATA_TO_GRID_CONTRACT.md)
+- [ASEAN profile review](ASEAN_PRIORITY_PROFILE_REVIEW.md)
+- [ASEAN profile decisions](profiles/ASEAN_PRIORITY_PROFILE_DECISIONS.json)
+- [Simple service API](SERVICE_API.md)
+- [Boundary policy guide](BOUNDARY_POLICY.md)
+- [V1 to V2 migration guide](MIGRATION_V1_V2.md)
+- [ASEAN coverage and projection plan](ASEAN_COVERAGE_PROJECTION.md)
 - [Crucial logic and CRS guide](CRUCIAL_LOGIC.md)
-- [V2 specification](V2SPECS.md)
+- [V2 technical specification](V2SPECS.md)
 - [Architecture decisions](ARCHITECTURE_DECISIONS.md)
 - [Candidate release instructions](RELEASE_CANDIDATE.md)
 - [Boundary source attribution](src/geosquare_v2/data/registry/boundaries/SOURCES.md)

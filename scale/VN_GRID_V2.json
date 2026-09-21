@@ -1,10 +1,10 @@
 {
   "domain_code": "VN",
-  "algorithm": "projection_factors_max_directional_boundary_vertices_v1",
+  "algorithm": "projection_factors_max_directional_full_boundary_v2",
   "proj_version": "9.5.1",
   "pyproj_version": "3.7.2",
-  "boundary_sha256": "6d59ad13be1212956005f507fa2ed137b7d09b78320d3ae192e0fa412c530435",
-  "sample_count": 3604,
+  "boundary_sha256": "2e82dbe0662f0f592902ef3e79011e438d63c7a356d43b3df0553b38866b501b",
+  "sample_count": 4449,
   "max_error_pct": 0.49218353763940126,
   "max_error_coordinate_crs84": [
     104.85644499600005,

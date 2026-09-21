@@ -1,7 +1,7 @@
 # Geosquare Core Specification v2.0
 
 **Status:** implementation baseline
-**Scope:** normative contract for the first production Geosquare V2 domain, Indonesia (`ID`).
+**Scope:** normative contract for the current country-domain candidate release, including the ASEAN profiles in the signed candidate registry.
 **Supersedes:** the proposed implementation details in `PROJECT.md` where they conflict with this document. `PROJECT.md` remains the product vision and historical rationale.
 
 ## 1. Purpose and invariants
@@ -12,7 +12,7 @@ The following invariants are non-negotiable:
 
 1. A cell is an exact square in its domain's **grid CRS**, measured in metres.
 2. Canonical identity is `(domain_code, level, x_idx, y_idx)`; GID strings, packed integers, and geometry are reversible representations or derivations of that identity.
-3. Every domain has an explicit, immutable origin, root side, grid CRS, equal-area CRS, reference epoch, and versioned profile.
+3. Every domain has an explicit, immutable origin, root side, grid CRS, equal-area CRS, reference epoch or explicit static/no-dynamic-epoch policy, and versioned profile.
 4. Hierarchy uses ordinary prefix truncation: one GID character represents one refinement level.
 5. Neighbours and distance operate on integer indices, never by geometric buffering or GID lexical order.
 6. GIDs and packed values are version-scoped. V1 identifiers are not V2 identifiers.
@@ -145,7 +145,7 @@ Partial registry initialization is prohibited.
 
 ### 4.3 Epoch policy
 
-A Geosquare domain is fixed to its profile's reference frame and `reference_epoch`. With no coordinate epoch supplied, input coordinates are interpreted as representing that reference epoch and are transformed statically. When an epoch is supplied, the implementation must use a documented time-dependent transformation or reject the request with `UnsupportedEpochTransformationError`.
+A Geosquare domain is fixed to its profile's reference frame and epoch policy. A profile with a numeric `reference_epoch` uses that realization. A profile with `reference_epoch: null` is a static candidate with no time-dependent epoch transformation. With no coordinate epoch supplied, input coordinates follow the profile policy. When an epoch is supplied, the implementation must use a documented time-dependent transformation or reject the request with `UnsupportedEpochTransformationError`.
 
 No API may infer an epoch from the system clock. This policy provides stable grid definitions while allowing source features to be re-indexed as their coordinate realization changes.
 
@@ -289,7 +289,7 @@ Before a domain is released, it must ship reproducible fixtures covering:
 
 ## 12. Implementation sequence
 
-1. Create signed registry tooling and one reviewed Indonesia profile with real CRS WKT2, boundary, hashes, scale analysis, and fixtures.
+1. Create signed registry tooling and reviewed ASEAN domain profiles with real CRS WKT2, boundaries, hashes, scale analysis, and fixtures.
 2. Implement domain loading, canonical indexing, strict GID codec, projected geometry, hierarchy, and integer topology.
 3. Implement Int64 packing and fixture-driven round-trip validation.
 4. Implement equal-area fractional polyfill and explicit operational-boundary predicates.

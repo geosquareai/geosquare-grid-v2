@@ -424,7 +424,7 @@ def list_registry_domains(
 
     ``db_path`` may be either the database file itself or the directory containing it
     (in which case ``db_file`` is joined onto it, matching :class:`DbRegistryLoader`'s
-    directory-based convention). Defaults to :data:`DEFAULT_DB_DIR` (``src/db``) when
+    directory-based convention). Defaults to :data:`DEFAULT_DB_DIR` (``src/geosquare_v2/db``) when
     omitted. Raises :class:`ManifestValidationError` if the file is missing or is not a
     readable SQLite database with the expected schema.
     """
@@ -466,7 +466,7 @@ def list_registry_domains(
 #: Default directory searched for the registry database when no ``db_dir`` is given to
 #: :class:`DbRegistryLoader` or :func:`list_registry_domains`. Resolves to
 #: ``src/geosquare_v2/db``, a subdirectory living inside the installable package itself
-#: (rather than ``src/db``, which sits outside the package tree) so the database ships
+#: (rather than ``src/geosquare_v2/db``, which sits outside the package tree) so the database ships
 #: as ordinary package data.
 DEFAULT_DB_DIR = Path(__file__).resolve().parent / "db"
 
@@ -485,7 +485,7 @@ class DbRegistryLoader:
     ``registry.db`` and ``registry.db.sig`` without the ``boundaries/*.geojson`` files or
     ``boundary_root``.
 
-    ``db_dir`` defaults to :data:`DEFAULT_DB_DIR` (``src/db``) so ``DbRegistryLoader(trust)``
+    ``db_dir`` defaults to :data:`DEFAULT_DB_DIR` (``src/geosquare_v2/db``) so ``DbRegistryLoader(trust)``
     works out of the box for the bundled candidate database. Pass an explicit ``db_dir``
     to load a database from anywhere else (e.g. in tests).
     """

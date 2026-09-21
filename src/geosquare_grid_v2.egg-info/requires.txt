@@ -23,3 +23,8 @@ shapely==2.1.2
 cryptography==50.0.0
 pyproj==3.7.2
 rfc8785==0.1.4
+
+[table]
+pandas==2.3.3
+pyarrow==22.0.0
+openpyxl==3.1.5

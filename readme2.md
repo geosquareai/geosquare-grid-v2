@@ -2,7 +2,7 @@
 
 A profile-driven, country-scoped hierarchical metric grid for durable spatial identifiers. Geosquare V2 encodes an exact square in a domain's declared projected CRS, with reproducible profile metadata, strict codecs, signed registry loading, fractional polygon coverage, vectorized interfaces, and warehouse UDF source generation.
 
-> **Release status: candidate.** The bundled Indonesia (`ID`) and Vietnam (`VN`) profiles are signed candidate release artifacts. Do not mark them production or edit registry artifacts in place; regenerate, review, and re-sign a new candidate instead.
+> **Release status: candidate.** The signed candidate registry contains all 11 ASEAN domains. Do not mark it production or edit registry artifacts in place; regenerate, review, and re-sign a new candidate instead.
 
 ## What V2 guarantees
 
@@ -17,10 +17,19 @@ V2 is intentionally **not wire-compatible** with V1 or the earlier international
 
 ## Domains included
 
-| Domain | Canonical grid CRS | Equal-area coverage CRS | Reference epoch |
-|---|---|---|---:|
-| `ID` — Indonesia | `GEOSQUARE:ID_SRGI2013_EQC_V2` | EPSG:8857 Equal Earth | 2012.0 |
-| `VN` — Vietnam | `GEOSQUARE:VN_VN2000_LCC_V2` | EPSG:8857 Equal Earth | 2000.0 |
+| Domain | Candidate grid CRS | Equal-area coverage CRS | Reference epoch policy |
+|---|---|---|---|
+| `BN` — Brunei Darussalam | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `KH` — Cambodia | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `ID` — Indonesia | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `LA` — Lao PDR | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `MY` — Malaysia | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `MM` — Myanmar | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `PH` — Philippines | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `SG` — Singapore | local projected candidate | EPSG:8857 Equal Earth | static candidate |
+| `TH` — Thailand | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `TL` — Timor-Leste | LCC candidate | EPSG:8857 Equal Earth | static candidate |
+| `VN` — Viet Nam | existing VN-2000 LCC | EPSG:8857 Equal Earth | 2000.0 |
 
 The full, authoritative CRS definitions and scale-error metadata are contained in the signed registry database, not abbreviated identifiers in this table. To list the domains present in a database file, see `list_registry_domains` below.
 
@@ -51,8 +60,8 @@ Optional dependency groups are pinned in `pyproject.toml`:
 The registry used to be a tree of JSON files (`registry.v2.json`, `profiles/*.json`, `scale/*.json`). It is now a single signed SQLite database:
 
 ```
-src/db/registry.db       Manifest, domain, profile, and scale-metadata tables
-src/db/registry.db.sig   Detached Ed25519 signature over the raw database bytes
+src/geosquare_v2/db/registry.db       Manifest, domain, profile, and scale-metadata tables
+src/geosquare_v2/db/registry.db.sig   Detached Ed25519 signature over the raw database bytes
 ```
 
 Boundary files (`src/geosquare_v2/data/registry/boundaries/*.geojson`) are unchanged and remain plain files on disk; only the manifest/profile/scale metadata moved into SQLite.
@@ -63,8 +72,8 @@ Boundary GeoJSON files are provenance metadata only; no grid calculation (indexi
 
 ```python
 registry = DbRegistryLoader(
-    "src/db",
     trust,
+    "src/geosquare_v2/db",
     verify_boundaries=False,   # skip boundary hash checks; no boundaries/ directory needed
 ).load()
 ```
@@ -74,7 +83,7 @@ To quickly see which domains a `registry.db` file contains without doing full si
 ```python
 from geosquare_v2.db import list_registry_domains
 
-for domain in list_registry_domains("src/db"):
+for domain in list_registry_domains("src/geosquare_v2/db"):
     print(domain.domain_code, domain.name, domain.min_level, domain.max_level)
 ```
 
@@ -99,8 +108,8 @@ encoded_keys = json.loads((project_root / "registry-trust.json").read_text())
 trust = {key_id: base64.b64decode(value) for key_id, value in encoded_keys.items()}
 
 registry = DbRegistryLoader(
-    project_root / "src/db",                                       # where registry.db + registry.db.sig live
     trust,                                                          # trusted public keys
+    project_root / "src/geosquare_v2/db",                                       # where registry.db + registry.db.sig live
     boundary_root=project_root / "src/geosquare_v2/data/registry",  # where boundaries/*.geojson live
 ).load()
 
@@ -228,7 +237,7 @@ Generated UDFs encode **projected X/Y metres in the profile grid CRS**; they do 
 
 ## Registry release and governance
 
-The registry is a signed SQLite database at `src/db/registry.db`, trusted via a detached Ed25519 signature (`src/db/registry.db.sig`) computed over the raw database file bytes. `DbRegistryLoader` is fail-closed: it checks the signature, profile/boundary/scale hashes, CRS parseability, and the exact signed PROJ environment before profiles are available. A local PROJ upgrade or any artifact change requires a freshly generated and signed candidate database. Boundary files (`src/geosquare_v2/data/registry/boundaries/*.geojson`) remain plain files on disk and are unaffected by this database.
+The registry is a signed SQLite database at `src/geosquare_v2/db/registry.db`, trusted via a detached Ed25519 signature (`src/geosquare_v2/db/registry.db.sig`) computed over the raw database file bytes. `DbRegistryLoader` is fail-closed: it checks the signature, profile/boundary/scale hashes, CRS parseability, and the exact signed PROJ environment before profiles are available. A local PROJ upgrade or any artifact change requires a freshly generated and signed candidate database. Boundary files (`src/geosquare_v2/data/registry/boundaries/*.geojson`) remain plain files on disk and are unaffected by this database.
 
 Never commit, distribute, or attach an Ed25519 private key. To create a new candidate database after approved profile/boundary changes:
 
@@ -241,11 +250,11 @@ Never commit, distribute, or attach an Ed25519 private key. To create a new cand
   --private-key geosquare-registry-private.pem \
   --db src/geosquare_v2/db/registry.db \
   --output src/geosquare_v2/db/registry.db.sig \
-  --key-id geosquare-registry-2026-08
+  --key-id geosquare-registry-2026-09
 
 .venv/bin/python scripts/sign_registry_db.py \
   --private-key geosquare-registry-private.pem \
-  --key-id geosquare-registry-2026-08
+  --key-id geosquare-registry-2026-09
 ```
 
 To migrate an existing legacy JSON registry tree into a database directly (e.g. for tooling or tests), use:
@@ -253,10 +262,10 @@ To migrate an existing legacy JSON registry tree into a database directly (e.g. 
 ```zsh
 .venv/bin/python scripts/migrate_registry_to_db.py \
   --source path/to/legacy/registry \
-  --destination src/db/registry.db
+  --destination src/geosquare_v2/db/registry.db
 ```
 
-Review the generated diff, CRS definitions, distortion metadata, boundary provenance, and release authorization before signing. See [RELEASE_CANDIDATE.md](RELEASE_CANDIDATE.md), [REGISTRY_FLOW_SIMPLE.md](REGISTRY_FLOW_SIMPLE.md), and [ARCHITECTURE_DECISIONS.md](ARCHITECTURE_DECISIONS.md) for the full process and rationale.
+Review the generated diff, CRS definitions, distortion metadata, boundary provenance, and release authorization before signing. See [RELEASE_CANDIDATE.md](RELEASE_CANDIDATE.md), [SQLITE_REGISTRY_GUIDE.md](SQLITE_REGISTRY_GUIDE.md), and [ARCHITECTURE_DECISIONS.md](ARCHITECTURE_DECISIONS.md) for the full process and rationale.
 
 ## Validation
 
@@ -266,16 +275,16 @@ Review the generated diff, CRS definitions, distortion metadata, boundary proven
 .venv/bin/python -m pip check
 ```
 
-The focused suite covers scalar/GID/packed consistency, projected and WGS84 geometry, planar/equal-area fractional coverage, candidate limits, NumPy/Pandas/Arrow equivalence, UDF source invariants, registry migration/signing/loading (success and tamper/failure paths), and end-to-end paths through the signed ID/VN candidate profiles.
+The focused suite covers scalar/GID/packed consistency, projected and WGS84 geometry, planar/equal-area fractional coverage, candidate limits, NumPy/Pandas/Arrow equivalence, UDF source invariants, registry migration/signing/loading (success and tamper/failure paths), table and aggregation operations, and end-to-end paths through the signed 11-domain ASEAN candidate profiles.
 
 ## Project layout
 
 ```text
-src/db/                           Signed registry database (registry.db, registry.db.sig)
+src/geosquare_v2/db/                           Signed registry database (registry.db, registry.db.sig)
 src/geosquare_v2/                 Package source
   data/registry/boundaries/       Boundary GeoJSON files and source attribution (unchanged by the SQLite migration)
   db.py                           SQLite schema, MigrationTool, DbRegistryLoader
-  manifest.py                     Legacy JSON manifest loader (RegistryLoader) — kept for reference, unused by src/db
+  manifest.py                     Legacy JSON manifest loader (RegistryLoader) — kept for reference, unused by src/geosquare_v2/db
   geometry.py                     Exact projected and densified WGS84 geometry
   polyfill.py                     Bounded fractional coverage
   batch.py                        NumPy, Pandas, Arrow encoders
@@ -288,7 +297,7 @@ tests/                            Focused conformance tests, including registry 
 V2SPECS.md                        Normative V2 contract
 ARCHITECTURE_DECISIONS.md          Architecture decision record
 RELEASE_CANDIDATE.md               Candidate release instructions
-REGISTRY_FLOW_SIMPLE.md            Plain-language walkthrough of where registry data comes from
+SQLITE_REGISTRY_GUIDE.md            Plain-language walkthrough of where registry data comes from
 ```
 
 ## Further reading
@@ -297,5 +306,5 @@ REGISTRY_FLOW_SIMPLE.md            Plain-language walkthrough of where registry 
 - [V2 specification](V2SPECS.md)
 - [Architecture decisions](ARCHITECTURE_DECISIONS.md)
 - [Candidate release instructions](RELEASE_CANDIDATE.md)
-- [Registry flow, explained simply](REGISTRY_FLOW_SIMPLE.md)
+- [Registry flow, explained simply](SQLITE_REGISTRY_GUIDE.md)
 - [Boundary source attribution](src/geosquare_v2/data/registry/boundaries/SOURCES.md)

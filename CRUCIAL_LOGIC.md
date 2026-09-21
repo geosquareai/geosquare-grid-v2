@@ -291,9 +291,9 @@ BigQuery and Snowflake JavaScript emit packed IDs as strings because JavaScript 
 
 ## 12. Reference epoch and coordinate realization
 
-A profile declares a reference epoch, which is part of its reproducibility contract. Coordinates supplied without an epoch are interpreted in that profile realization/epoch.
+A profile declares a reference epoch, or explicitly uses `reference_epoch: null` for a static candidate with no dynamic epoch transformation. This choice is part of its reproducibility contract. Coordinates supplied without an epoch are interpreted according to that profile policy.
 
-The current public encoder APIs do not accept a coordinate epoch or construct time-dependent transformations. A caller that has time-dependent source coordinates must resolve them to the profile's declared realization/epoch before indexing, or reject the request when a documented transformation is unavailable. The system must never infer an epoch from the current clock.
+The current public encoder APIs do not accept a coordinate epoch or construct time-dependent transformations. A caller that has time-dependent source coordinates must resolve them to the profile realization first, or reject the request when a documented transformation is unavailable. The system must never infer an epoch from the current clock.
 
 ## 13. Signed registry: why profile data is release data
 

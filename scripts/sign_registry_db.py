@@ -35,13 +35,18 @@ def main() -> None:
     parser.add_argument("--key-id", required=True)
     args = parser.parse_args()
 
+    private_key_path = args.private_key.resolve()
+    repository_root = Path(__file__).resolve().parents[1]
+    if private_key_path == repository_root or repository_root in private_key_path.parents:
+        raise SystemExit("private key must be stored outside the repository")
+
     if not args.db.is_file():
         raise SystemExit(f"registry database not found: {args.db}")
 
     db_bytes = args.db.read_bytes()
     digest = hashlib.sha256(db_bytes).digest()
 
-    private_key = serialization.load_pem_private_key(args.private_key.read_bytes(), password=None)
+    private_key = serialization.load_pem_private_key(private_key_path.read_bytes(), password=None)
     signature = private_key.sign(digest)
 
     sidecar = {

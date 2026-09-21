@@ -80,7 +80,7 @@ This record captures the decisions made after comparing the legacy `geosquare-gr
 
 ## ADR-007 — Signed registry and fixtures precede scale-out
 
-**Decision:** Production domains are released through a signed registry with pinned CRS resources, profile and boundary hashes, and conformance fixtures. Indonesia is implemented and validated first.
+**Decision:** Production domains are released through a signed registry with pinned CRS resources, profile and boundary hashes, and conformance fixtures. The current candidate release covers all 11 ASEAN domains.
 
 **Why:** Grid identifiers become durable data keys. CRS database drift, changed boundary files, or unreviewed projection changes must not silently redefine them.
 

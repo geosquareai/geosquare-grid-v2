@@ -1,15 +1,15 @@
 {
   "domain_code": "ID",
-  "algorithm": "projection_factors_max_directional_boundary_vertices_v1",
+  "algorithm": "projection_factors_max_directional_full_boundary_v2",
   "proj_version": "9.5.1",
   "pyproj_version": "3.7.2",
-  "boundary_sha256": "adb38ba53ef172f63ffdc93da69827725cbd319c7b1d4b5c79ab08e5544b8fa3",
-  "sample_count": 20872,
-  "max_error_pct": 1.8711202983859199,
+  "boundary_sha256": "b2e253c47038aec319eb82b12e73e22e5562848688e676b399be6c59828c4a56",
+  "sample_count": 20979,
+  "max_error_pct": 0.6070515705397517,
   "max_error_coordinate_crs84": [
-    122.88672670000003,
-    -10.998410799999977
+    122.88182620000002,
+    -11.00544660000001
   ],
-  "meridional_scale": 0.9999999999996122,
-  "parallel_scale": 1.0187112029838592
+  "meridional_scale": 1.0060705157053975,
+  "parallel_scale": 1.00607051544861
 }

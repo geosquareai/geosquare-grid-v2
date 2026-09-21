@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Generate hash-pinned ID and VN V2 registry release candidates.
+"""Legacy ID/VN release generator.
 
-The output database is deliberately unsigned. Run sign_registry_db.py locally with the
-private Ed25519 key after reviewing every generated artifact.
+For the current 11-domain ASEAN candidate, use
+``scripts/generate_asean_release_candidates.py`` instead.
 """
 
 from __future__ import annotations

@@ -20,10 +20,15 @@ def main() -> None:
     parser.add_argument("--key-id", required=True)
     args = parser.parse_args()
 
+    private_key_path = args.private_key.resolve()
+    repository_root = Path(__file__).resolve().parents[1]
+    if private_key_path == repository_root or repository_root in private_key_path.parents:
+        raise SystemExit("private key must be stored outside the repository")
+
     manifest = json.loads(args.input.read_text(encoding="utf-8"))
     if "signature" in manifest:
         raise SystemExit("input manifest must be unsigned")
-    private_key = serialization.load_pem_private_key(args.private_key.read_bytes(), password=None)
+    private_key = serialization.load_pem_private_key(private_key_path.read_bytes(), password=None)
     signature = private_key.sign(rfc8785.dumps(manifest))
     manifest["signature"] = {
         "algorithm": "Ed25519",

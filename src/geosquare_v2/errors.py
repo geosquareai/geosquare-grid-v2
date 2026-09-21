@@ -17,12 +17,20 @@ class OutOfDomainError(GeosquareError, ValueError):
     """Raised when projected coordinates are outside a profile root square."""
 
 
+class OutsideOperationalBoundaryError(GeosquareError, ValueError):
+    """Raised when a high-level operation rejects a point outside the operational boundary."""
+
+
 class InvalidGIDError(ValidationError):
     """Raised when a GID is malformed or invalid at its declared level."""
 
 
 class InvalidPackedIDError(ValidationError):
     """Raised when an Int64 value cannot encode a valid V2 cell."""
+
+
+class TableDependencyError(GeosquareError, ImportError):
+    """Raised when Pandas table operations are requested without table dependencies."""
 
 
 class RegistryDependencyError(GeosquareError, ImportError):

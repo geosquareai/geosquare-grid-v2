@@ -6,6 +6,7 @@ from enum import Enum
 import math
 from typing import TYPE_CHECKING, Iterator
 
+from .boundary import BoundaryPredicate, OperationalBoundary
 from .codec import side_cell_count, validate_level
 from .errors import CandidateLimitExceededError, GeometryDependencyError, ValidationError
 from .geometry import (
@@ -119,13 +120,16 @@ def polyfill_stream(
     coverage_mode: CoverageMode | str = CoverageMode.GRID_PLANAR,
     min_coverage: float = 0.0,
     max_candidate_limit: int = 100_000,
+    boundary: OperationalBoundary | None = None,
+    boundary_predicate: BoundaryPredicate | str | None = None,
+    boundary_min_coverage: float | None = None,
 ) -> Iterator[tuple[str, float]]:
     """Yield ``(bare_gid, coverage_ratio)`` in deterministic row-major order.
 
     Geometry is transformed with ``always_xy=True``, intersected with the mathematical
-    root square, and bounded before any cell enumeration. This intentionally does not
-    apply the optional country boundary: callers must make that operational predicate
-    explicit rather than silently changing root-domain coverage semantics.
+    root square, and bounded before any cell enumeration. Country-boundary filtering is
+    opt-in: pass an ``OperationalBoundary`` and a named ``boundary_predicate`` when the
+    result should follow an operational country policy.
     """
     if not isinstance(grid.profile, ReleaseProfile):
         raise ValidationError("polyfill requires a GeosquareGrid built from a verified ReleaseProfile")
@@ -138,6 +142,35 @@ def polyfill_stream(
         raise ValidationError("min_coverage must be a finite number in [0, 1]")
     if not isinstance(source_crs, str) or not source_crs.strip():
         raise ValidationError("source_crs must be a non-empty CRS definition")
+    selected_boundary_predicate: BoundaryPredicate | None = None
+    if boundary is None:
+        if boundary_predicate is not None or boundary_min_coverage is not None:
+            raise ValidationError("boundary_predicate requires an OperationalBoundary")
+    else:
+        if not isinstance(boundary, OperationalBoundary):
+            raise ValidationError("boundary must be an OperationalBoundary")
+        if boundary_predicate is None:
+            raise ValidationError("boundary_predicate is required when boundary filtering is enabled")
+        try:
+            selected_boundary_predicate = (
+                boundary_predicate
+                if isinstance(boundary_predicate, BoundaryPredicate)
+                else BoundaryPredicate(boundary_predicate)
+            )
+        except ValueError as exc:
+            raise ValidationError("boundary_predicate is not supported") from exc
+        if selected_boundary_predicate is BoundaryPredicate.COVERS_POINT:
+            raise ValidationError("COVERS_POINT is for point indexing, not polygon polyfill")
+        if selected_boundary_predicate is BoundaryPredicate.MIN_COVERAGE:
+            if (
+                boundary_min_coverage is None
+                or isinstance(boundary_min_coverage, bool)
+                or not isinstance(boundary_min_coverage, (int, float))
+                or not 0 <= float(boundary_min_coverage) <= 1
+            ):
+                raise ValidationError("boundary_min_coverage must be a number in [0, 1]")
+        elif boundary_min_coverage is not None:
+            raise ValidationError("boundary_min_coverage is only valid with MIN_COVERAGE")
 
     mode = _as_mode(coverage_mode)
     _, geometry_tools, _, _ = _require_shapely_utilities()
@@ -161,6 +194,13 @@ def polyfill_stream(
         for x_idx in columns:
             cell = CanonicalCell(grid.profile.domain_code, level, x_idx, y_idx)
             cell_geometry = projected_cell_geometry(grid, cell)
+            if boundary is not None and not boundary.cell_matches(
+                grid,
+                cell,
+                selected_boundary_predicate,
+                min_coverage=boundary_min_coverage,
+            ):
+                continue
             # Intersect in the authoritative grid CRS first. Reprojecting neighbouring
             # polygons independently can create a numerical seam in equal-area space.
             planar_intersection = clipped.intersection(cell_geometry)
