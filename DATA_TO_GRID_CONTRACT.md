@@ -109,7 +109,9 @@ A line that only touches a cell corner does not count.
 
 The result includes length coverage. Length is measured in the declared projected/grid CRS unless a future geodesic mode is requested.
 
-## 4. Table rules
+## Cell dataset format
+
+The Parquet storage contract is [CELL_DATASET_CONTRACT.md](CELL_DATASET_CONTRACT.md). It defines the manifest, reserved columns, value fields, and validation rules.
 
 `table_to_cells` preserves selected source fields.
 

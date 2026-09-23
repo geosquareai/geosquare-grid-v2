@@ -18,6 +18,7 @@ It gives locations stable square-grid addresses. It computes cell geometry when 
 
 These root documents contain the detailed technical rules:
 
+- [Handover and next steps](../HANDOVER.md)
 - [Changelog](../CHANGELOG.md)
 - [Product contract](../PRODUCT_CONTRACT_V2.md)
 - [Technical specification](../V2SPECS.md)
@@ -25,6 +26,8 @@ These root documents contain the detailed technical rules:
 - [Core logic and CRS guide](../CRUCIAL_LOGIC.md)
 - [Simple service API](../SERVICE_API.md)
 - [Data-to-grid contract](../DATA_TO_GRID_CONTRACT.md)
+- [Cell dataset contract](../CELL_DATASET_CONTRACT.md)
+- [Cell dataset manifest schema](../schemas/cell-dataset-manifest-v1.schema.json)
 - [Boundary policy](../BOUNDARY_POLICY.md)
 - [V1 migration guide](../MIGRATION_V1_V2.md)
 - [Release candidate guide](../RELEASE_CANDIDATE.md)

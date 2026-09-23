@@ -323,7 +323,9 @@ RELEASE_CANDIDATE.md               Candidate release instructions
 
 ## Further reading
 
+- [Handover and next steps](HANDOVER.md)
 - [Changelog](CHANGELOG.md)
+- [Cell dataset contract](CELL_DATASET_CONTRACT.md)
 - [Complete documentation](docs/README.md)
 - [V2 product contract](PRODUCT_CONTRACT_V2.md)
 - [ASEAN cross-system benchmark](ASEAN_CROSS_SYSTEM_BENCHMARK.md)
