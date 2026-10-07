@@ -1,8 +1,11 @@
 # Changelog
 
-## 0.1.0 — ASEAN V2 release candidate
+## 0.1.0rc1 — ASEAN V2 technical candidate
 
-Status: candidate. Not yet uploaded to PyPI.
+Status: local candidate preparation only. Not uploaded to TestPyPI or PyPI.
+The candidate remains non-production and is subject to the boundary
+redistribution, geodetic-status, and package-size approval gates. See
+[NOTICE](NOTICE).
 
 ### Added
 
@@ -28,5 +31,8 @@ Status: candidate. Not yet uploaded to PyPI.
 - Country profiles are release candidates.
 - Custom WGS84-style candidate profiles use a static/no-dynamic-epoch policy until national datum approval is complete.
 - The registry is signed with an Ed25519 key stored outside the repository.
-- The project has passed the pinned 144-test suite.
-- Wheel and sdist installation checks passed.
+- The project has passed the current pinned 195-test suite.
+- Fresh wheel and sdist installation checks are required for `0.1.0rc1` and
+  must use `dist-candidate/`, not the tracked historical `dist/` artifacts.
+- Boundary attribution and the open redistribution gate are recorded in
+  `NOTICE`.

@@ -1,4 +1,4 @@
-# Data conversion and aggregation
+This guide follows the storage rules in [CELL_DATASET_CONTRACT.md](../CELL_DATASET_CONTRACT.md). The machine-readable manifest schema is [schemas/cell-dataset-manifest-v1.schema.json](../schemas/cell-dataset-manifest-v1.schema.json).
 
 GeoSquare data work has two separate steps:
 

@@ -9,6 +9,14 @@ class ValidationError(GeosquareError, ValueError):
     """Raised when an input does not satisfy the V2 contract."""
 
 
+class CellDatasetError(ValidationError):
+    """Raised when a cell-dataset storage or validation operation fails."""
+
+
+class CellDatasetManifestError(CellDatasetError):
+    """Raised when a cell-dataset manifest violates the dataset contract."""
+
+
 class UnknownDomainError(GeosquareError, KeyError):
     """Raised when a requested domain is not present in a registry."""
 
@@ -31,6 +39,10 @@ class InvalidPackedIDError(ValidationError):
 
 class TableDependencyError(GeosquareError, ImportError):
     """Raised when Pandas table operations are requested without table dependencies."""
+
+
+class FilesystemDependencyError(GeosquareError, ImportError):
+    """Raised when optional fsspec filesystem support is unavailable."""
 
 
 class RegistryDependencyError(GeosquareError, ImportError):

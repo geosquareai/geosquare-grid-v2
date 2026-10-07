@@ -18,6 +18,7 @@ It gives locations stable square-grid addresses. It computes cell geometry when 
 
 These root documents contain the detailed technical rules:
 
+- [Handover and next steps](../HANDOVER.md)
 - [Changelog](../CHANGELOG.md)
 - [Product contract](../PRODUCT_CONTRACT_V2.md)
 - [Technical specification](../V2SPECS.md)
@@ -25,6 +26,8 @@ These root documents contain the detailed technical rules:
 - [Core logic and CRS guide](../CRUCIAL_LOGIC.md)
 - [Simple service API](../SERVICE_API.md)
 - [Data-to-grid contract](../DATA_TO_GRID_CONTRACT.md)
+- [Cell dataset contract](../CELL_DATASET_CONTRACT.md)
+- [Cell dataset manifest schema](../schemas/cell-dataset-manifest-v1.schema.json)
 - [Boundary policy](../BOUNDARY_POLICY.md)
 - [V1 migration guide](../MIGRATION_V1_V2.md)
 - [Release candidate guide](../RELEASE_CANDIDATE.md)
@@ -32,21 +35,19 @@ These root documents contain the detailed technical rules:
 
 ## Current status
 
-The codebase is still a release candidate.
+The package target is `0.1.0rc1`, a local technical candidate only. It has not been uploaded to TestPyPI or PyPI, and this release-hardening task performs no upload.
 
-The core model is implemented. The signed candidate registry now contains all 11 ASEAN domains.
+The core model is implemented. The signed candidate registry contains all 11 ASEAN domains, but the profiles and boundaries are not approved production geodetic data.
 
-The candidate release has passed the pinned 144-test suite, clean wheel/sdist install checks, and verified 11-domain registry loading.
+The current suite collects 195 tests. Candidate validation uses a fresh wheel and sdist in `dist-candidate/`; the tracked `dist/` 0.1.0 artifacts are historical inputs and are not reused or regenerated.
 
-Before public production upload, still complete:
+Before any publication review, the following blockers require explicit human approval:
 
-- final profile and static-epoch approval;
-- boundary authority approval;
-- Git-history cleanup for the old private key;
-- release authorization; and
-- PyPI upload review.
+- boundary redistribution rights and the accuracy of [NOTICE](../NOTICE);
+- distribution of the static/candidate geodetic profiles as a technical candidate; and
+- package-size approval while retaining full boundaries.
 
-The current artifacts are ready as a release candidate. They are not uploaded by this agent.
+The candidate is prepared locally only. See [release and security](07_RELEASE_AND_SECURITY.md) and [release-candidate attribution](../NOTICE).
 
 ## Public API names
 

@@ -1,199 +1,87 @@
-# Geosquare Grid V2
+# GeoSquare Grid V2
 
-A profile-driven, country-scoped hierarchical metric grid for durable spatial identifiers. Geosquare V2 encodes an exact square in a domain's declared projected CRS, with reproducible profile metadata, strict codecs, signed registry loading, fractional polygon coverage, vectorized interfaces, and warehouse UDF source generation.
+Need stable cell IDs for points, lines, or polygons?
 
-> **Release status: candidate.** The signed candidate registry contains all 11 ASEAN domains. Do not mark it production or edit registry artifacts in place. Regenerate, review, and re-sign a new candidate instead.
+GeoSquare Grid V2 turns geographic data into shared square cells. It gives you IDs that work across files, databases, APIs, and countries.
 
-## What V2 guarantees
-
-- **Canonical identity:** `(domain_code, level, x_idx, y_idx)` is the durable cell identity. A GID, packed `Int64`, and geometry are reversible encodings or derivations of it.
-- **Exact projected geometry:** every cell is an exact square in the domain grid CRS. Reprojected WGS84 geometry is intended for display/interchange only.
-- **Stable hierarchy:** levels `0`–`14` use fixed alternating subdivisions `[5, 2, 5, 2, …]`; level 9 is 1 km and level 14 is 5 m.
-- **Explicit domain contract:** each country profile declares its CRS WKT2, equal-area CRS, root, reference epoch, scale metadata, and operational boundary.
-- **Reproducible releases:** registry loading verifies the Ed25519 signature, artifact hashes, exact PROJ version/resources, and profile CRS definitions before returning any profile.
-- **No lexical spatial assumptions:** use `domain`, `level`, `x_idx`, and `y_idx` for spatial windows and neighbours. GID lexical ranges are not geographic ranges.
-
-V2 is intentionally **not wire-compatible** with V1 or the earlier international prototype. Store the versioned, domain-qualified identifier—`geosquare:v2:<domain>:<gid>`—in durable data, APIs, and events.
-
-## Domains included
-
-| Domain | Candidate grid CRS | Equal-area coverage CRS | Reference epoch policy |
-|---|---|---|---|
-| `BN` — Brunei Darussalam | LCC candidate | EPSG:8857 Equal Earth | static candidate |
-| `KH` — Cambodia | LCC candidate | EPSG:8857 Equal Earth | static candidate |
-| `ID` — Indonesia | LCC candidate | EPSG:8857 Equal Earth | static candidate |
-| `LA` — Lao PDR | LCC candidate | EPSG:8857 Equal Earth | static candidate |
-| `MY` — Malaysia | LCC candidate | EPSG:8857 Equal Earth | static candidate |
-| `MM` — Myanmar | LCC candidate | EPSG:8857 Equal Earth | static candidate |
-| `PH` — Philippines | LCC candidate | EPSG:8857 Equal Earth | static candidate |
-| `SG` — Singapore | local projected candidate | EPSG:8857 Equal Earth | static candidate |
-| `TH` — Thailand | LCC candidate | EPSG:8857 Equal Earth | static candidate |
-| `TL` — Timor-Leste | LCC candidate | EPSG:8857 Equal Earth | static candidate |
-| `VN` — Viet Nam | existing VN-2000 LCC | EPSG:8857 Equal Earth | 2000.0 |
-
-The full, authoritative CRS definitions and scale-error metadata are contained in the signed profiles, not abbreviated identifiers in this table.
-
-## Simple application API
-
-Use `GeosquareService` for normal application code. It creates the CRS transformer, encodes the GID, and returns a versioned URI.
+The main Python import is:
 
 ```python
-from geosquare_v2 import BoundaryPredicate, GeosquareService
-
-# registry is loaded with DbRegistryLoader, as shown below.
-service = GeosquareService(
-    registry,
-    boundary_root=project_root / "src/geosquare_v2/data/registry",
-)
-
-cell = service.point_to_cell(
-    "ID",
-    106.8456,
-    -6.2088,
-    level=9,
-    boundary_policy=BoundaryPredicate.COVERS_POINT,
-)
-
-print(cell.uri)
-print(cell.cell_edge_m)
-print(cell.scale_error_max_pct)
+import geosquare_v2
 ```
 
-See [SERVICE_API.md](SERVICE_API.md) for point indexing, URI decoding, neighbours, distance, and polyfill examples.
+> **Current status: `0.1.0rc1` technical candidate.** This local candidate is not production geodetic data and has not been uploaded to TestPyPI or PyPI. The ASEAN profiles are signed release candidates, not final production profiles. Boundary attribution and redistribution notes are in [NOTICE](NOTICE); the approval gates remain open.
 
-## Installation
+## What can I do with it?
 
-Requirements: Python 3.11+.
+Most users come here with one of these problems:
+
+1. “I have points. How do I put them into stable cells?”
+2. “My polygons cross many cells. How do I keep the split visible?”
+3. “How do I add values without mixing totals, densities, and averages?”
+4. “How do I read only the cells in a map viewport?”
+5. “How do I save the result locally or in S3?”
+
+The examples below focus on those jobs.
+
+## Install from the repository
+
+PyPI publication is still pending. For now, install from a local checkout:
 
 ```zsh
-# Scalar core plus signed registry loading
+# Point and registry workflows
 python -m pip install -e ".[registry]"
 
-# all analytics, table, and test adapters
-python -m pip install -e ".[analytics,registry,table,dev]"
+# Geometry, tables, Arrow, and aggregation
+python -m pip install -e ".[analytics,registry,table]"
+
+# Optional fsspec and S3-style storage
+python -m pip install -e ".[analytics,registry,table,filesystem]"
+# Use .[... ,s3] when you need the real s3fs backend.
 ```
 
-Optional dependency groups are pinned in `pyproject.toml`:
+Python 3.11 or newer is required.
 
-| Extra | Provides |
-|---|---|
-| `registry` | Ed25519/RFC 8785 signature verification and PROJ resource checks |
-| `geo` | PyProj and Shapely geometry operations |
-| `batch` | NumPy, Pandas, and Apache Arrow adapters |
-| `analytics` | Combined `geo` and `batch` runtime support |
-| `table` | Pandas, Arrow, and XLSX table adapters |
-| `dev` | Pytest test runner |
+## First, load a trusted registry
 
-## Quick start: load a verified domain and encode a point
-
-The registry trust anchor is supplied by the host application. The repository's `registry-trust.json` is a public-key example for the bundled candidate; production applications should manage their trusted public keys independently.
+The registry tells GeoSquare which profile belongs to each domain. It also verifies the signed candidate database.
 
 ```python
 import base64
 import json
 from pathlib import Path
 
-from pyproj import CRS, Transformer
+from geosquare_v2 import DbRegistryLoader, GeosquareService
 
-from geosquare_v2.grid import GeosquareGrid
-from geosquare_v2.db import DbRegistryLoader
-
-project_root = Path(".")
-encoded_keys = json.loads((project_root / "registry-trust.json").read_text())
-trust = {key_id: base64.b64decode(value) for key_id, value in encoded_keys.items()}
+root = Path(".")
+keys = json.loads((root / "registry-trust.json").read_text())
+trust = {
+    key_id: base64.b64decode(value, validate=True)
+    for key_id, value in keys.items()
+}
 
 registry = DbRegistryLoader(
     trust,
-    project_root / "src/geosquare_v2/db",
-    boundary_root=project_root / "src/geosquare_v2/data/registry",
+    root / "src/geosquare_v2/db",
+    boundary_root=root / "src/geosquare_v2/data/registry",
+    verify_boundaries=True,
 ).load()
 
-profile = registry.get("ID")
-grid = GeosquareGrid(profile)
-to_grid = Transformer.from_crs(
-    CRS.from_epsg(4326),
-    CRS.from_user_input(profile.crs_wkt2),
-    always_xy=True,
+service = GeosquareService(
+    registry,
+    boundary_root=root / "src/geosquare_v2/data/registry",
 )
-
-cell = grid.canonical_from_lonlat(106.8456, -6.2088, level=9, transformer=to_grid)
-gid = grid.gid_from_canonical(cell)
-
-print(grid.uri(cell))          # geosquare:v2:ID:<gid>
-print(grid.pack(cell))         # non-negative signed Int64
-print(grid.projected_bounds(cell))
 ```
 
-`always_xy=True` is required when transforming longitude/latitude. Projected input is valid on the **closed** root extent; the outer maximum root edge belongs to the final cell at that level. Internal cell intervals are half-open.
+In an installed application, point the loader to your packaged registry and your trusted public-key store. Never put a private signing key in the repository or package.
 
-A bare GID is only valid where domain and version are fixed by the API contract. The level-0 root GID is the empty string (`""`).
+## Use case 1: put points into cells
 
-## Core operations
+### The problem
 
-```python
-# Decode and hierarchy/topology operations
-decoded = grid.canonical_from_gid(gid)
-parent = grid.parent(decoded)
-children = grid.children(parent)       # 4 or 25 children, depending on the next level
-neighbours = grid.k_ring(decoded, 1)   # Moore neighbourhood, clipped to the mathematical root
+You have a CSV, DataFrame, or Parquet file with longitude and latitude. You need a stable cell ID for each row.
 
-# Lossless signed Int64 round trip
-packed = grid.pack(decoded)
-assert grid.unpack(packed) == decoded
-```
-
-Country-boundary filtering is deliberately not implicit in core indexing. The mathematical root remains complete; applications that need an operational boundary predicate must apply and name it explicitly.
-
-## Geometry and fractional polyfill
-
-The authoritative shape is the exact projected square. Use densified WGS84 geometry when a geographic display shape is needed.
-
-```python
-from shapely.geometry import Polygon
-
-from geosquare_v2.geometry import projected_cell_geometry, wgs84_cell_geometry
-from geosquare_v2.polyfill import CoverageMode, polyfill
-
-projected_square = projected_cell_geometry(grid, gid)
-wgs84_polygon = wgs84_cell_geometry(grid, gid, max_segment_length_m=25_000)
-
-# Input polygon coordinates are WGS84 longitude/latitude.
-polygon = Polygon([
-    (106.80, -6.24),
-    (106.89, -6.24),
-    (106.89, -6.16),
-    (106.80, -6.16),
-    (106.80, -6.24),
-])
-
-coverage = polyfill(
-    grid,
-    polygon,
-    "EPSG:4326",
-    level=9,
-    coverage_mode=CoverageMode.EQUAL_AREA,
-    min_coverage=0.01,
-    max_candidate_limit=100_000,
-)
-# (bare_gid, coverage_ratio) pairs in deterministic row-major order
-```
-
-`GRID_PLANAR` calculates the ratio in the grid CRS. `EQUAL_AREA` calculates it through the profile's verified equal-area CRS and should be used for coastal, cross-projection, or published statistical coverage. Polyfill normalizes polygonal input, clips it to the root, applies its candidate limit **before** enumeration, and never silently filters by the country boundary.
-
-## Data-to-grid conversions
-
-Use the same naming pattern for every geometry operation:
-
-```python
-cells = service.polygon_to_cells(domain, polygon, "EPSG:4326", level=12)
-cell = service.polygon_to_cell(domain, polygon, "EPSG:4326", level=12)
-line_cells = service.line_to_cells(domain, line, "EPSG:4326", level=12)
-geometry = service.cell_to_geometry(cell.uri, output_crs="EPSG:4326")
-```
-
-The conversion records contain the cell ID and area or length ratios. Geometry is optional.
-
-For tabular data:
+### The solution
 
 ```python
 assigned = service.table_to_cells(
@@ -204,140 +92,408 @@ assigned = service.table_to_cells(
     latitude_column="latitude",
     keep_columns=["asset_id", "value"],
 )
-
-summary = service.aggregate_to_cells(
-    assigned,
-    value_type="numeric",
-    value_column="value",
-    rule="weighted_mean",
-)
 ```
 
-See [DATA_TO_GRID_CONTRACT.md](DATA_TO_GRID_CONTRACT.md) for value semantics, category rules, range rules, and accuracy modes.
+The output keeps your selected fields and adds:
 
-## Vectorized data interfaces
+```text
+domain
+level
+x_idx
+y_idx
+gid
+uri
+packed_id
+```
 
-NumPy is the numeric reference implementation for batch encoding. Pandas and Arrow adapters use the same vectorized kernels.
+The durable URI looks like this:
+
+```text
+geosquare:v2:ID:<gid>
+```
+
+Store the URI when you need an identifier that includes both the grid version and domain.
+
+For a single point:
 
 ```python
-import numpy as np
-import pandas as pd
-import pyarrow as pa
-
-from geosquare_v2.batch import (
-    encode_lonlat_numpy,
-    encode_projected_arrow,
-    encode_projected_pandas,
+cell = service.point_to_cell(
+    "ID",
+    longitude=106.8456,
+    latitude=-6.2088,
+    level=12,
 )
 
-# WGS84 arrays -> canonical indices, bare GIDs, and signed Int64 values
-encoded = encode_lonlat_numpy(
-    grid,
-    np.array([106.8456, 106.8460]),
-    np.array([-6.2088, -6.2090]),
-    level=9,
-)
-print(encoded.gid, encoded.packed_id)
-
-# Projected-coordinate DataFrame and Arrow table adapters
-frame = pd.DataFrame({"x_m": [0.0], "y_m": [0.0]})
-pandas_result = encode_projected_pandas(grid, frame, "x_m", "y_m", level=9)
-arrow_result = encode_projected_arrow(grid, pa.table(frame), "x_m", "y_m", level=9)
+print(cell.uri)
+print(cell.projected_bounds)
+print(cell.cell_edge_m)
 ```
 
-Available adapters are `encode_projected_numpy`, `encode_lonlat_numpy`, `encode_projected_pandas`, `encode_lonlat_pandas`, `encode_projected_arrow`, and `encode_lonlat_arrow`. Batch operations preserve scalar root-edge semantics and return `domain`, `level`, `x_idx`, `y_idx`, `gid`, and `packed_id` fields.
+## Use case 2: split polygons and lines into contributions
 
-## Warehouse UDF source generation
+### The problem
 
-Generate SQL/JavaScript source from a **verified** `ReleaseProfile`:
+A polygon or line can cross many cells. One final row per cell hides how the value was assigned.
+
+### The solution
+
+Create an auditable contribution table first:
 
 ```python
-from geosquare_v2.warehouse import (
-    render_bigquery_projected_encoder,
-    render_snowflake_projected_encoder,
-    render_postgis_projected_encoder,
+from geosquare_v2 import geometry_table_to_cells
+
+contributions = geometry_table_to_cells(
+    "parcels.parquet",
+    service,
+    "ID",
+    level=12,
+    geometry_column="geometry",
+    source_id_column="parcel_id",
+    source_crs="EPSG:4326",
+    keep_columns=["population"],
+)
+```
+
+A contribution table keeps fields such as:
+
+```text
+source_id
+source payload fields
+domain
+level
+gid
+uri
+coverage_ratio
+length_ratio
+assignment_method
+boundary_policy
+```
+
+Use `coverage_ratio` for polygon shares. Use `length_ratio` for line shares. A source feature can create several rows.
+
+For polygon totals, the table normalizes the coverage shares for each source feature. The shares add up to one before allocation.
+
+Boundary filtering is always explicit:
+
+```python
+from geosquare_v2 import BoundaryPredicate
+
+contributions = geometry_table_to_cells(
+    "parcels.parquet",
+    service,
+    "ID",
+    level=12,
+    geometry_column="geometry",
+    source_id_column="parcel_id",
+    source_crs="EPSG:4326",
+    boundary_policy=BoundaryPredicate.INTERSECTS,
+)
+```
+
+Available policies are:
+
+```text
+COVERS_POINT
+CENTROID_COVERED
+INTERSECTS
+MIN_COVERAGE
+```
+
+## Use case 3: aggregate values without losing their meaning
+
+### The problem
+
+A polygon total is not a density. A rate is not a sum. A category is not an average.
+
+### The solution
+
+Tell GeoSquare what the value means:
+
+```python
+from geosquare_v2 import aggregate_geometry_table_to_cells
+
+population_by_cell = aggregate_geometry_table_to_cells(
+    "parcels.parquet",
+    service,
+    "ID",
+    level=12,
+    value_semantics="TOTAL",
+    value_column="population",
+    geometry_options={
+        "geometry_column": "geometry",
+        "source_id_column": "parcel_id",
+        "source_crs": "EPSG:4326",
+        "keep_columns": ["population"],
+    },
+)
+```
+
+Supported meanings are:
+
+| Meaning | Default behavior |
+|---|---|
+| `COUNT` | Count contribution rows. |
+| `TOTAL` | Allocate by normalized area or length share, then sum. |
+| `DENSITY` | Return a ratio-weighted mean. Keep it as a density. |
+| `MEASUREMENT` | Return a ratio-weighted mean. |
+| `RATE` | Aggregate numerator/denominator columns, or use a weighted mean. |
+| `ORDINAL` | Use an explicit priority order. |
+| `CATEGORICAL` | Use an explicit category rule. |
+| `RANGE` | Use an explicit range rule. |
+
+For an existing contribution table:
+
+```python
+from geosquare_v2 import aggregate_geometry_contributions
+
+result = aggregate_geometry_contributions(
+    contributions,
+    value_semantics="TOTAL",
+    value_column="population",
+)
+```
+
+The selected meaning and allocation rule are recorded in:
+
+```python
+result.attrs["geosquare"]
+```
+
+This makes the result easier to audit. It also stops a later user from guessing what the number means.
+
+## Use case 4: query cells in a map viewport
+
+### The problem
+
+A map only needs the cells inside its current viewport. Loading every cell wastes time and memory.
+
+### The solution
+
+Write a queryable dataset with `packed_id`, `x_idx`, and `y_idx`, then query it:
+
+```python
+from geosquare_v2 import query_cell_dataset
+
+visible = query_cell_dataset(
+    "datasets/population/",
+    bbox=(106.7, -6.3, 106.9, -6.1),
+    domain="ID",
+    level=12,
+    registry=registry,
+)
+```
+
+The local query path uses Parquet predicate filtering on the x/y index. It does not build every cell geometry.
+
+The bbox uses WGS84 longitude and latitude:
+
+```text
+(min_lon, min_lat, max_lon, max_lat)
+```
+
+Antimeridian-crossing bboxes are supported. GID-only compact datasets are not queryable by rectangular window.
+
+## Use case 5: save and read a cell dataset
+
+### The problem
+
+You need a portable dataset with enough metadata to explain what each GID means.
+
+### The solution
+
+A dataset contains:
+
+```text
+dataset/
+├── manifest.json
+└── data/
+    └── part-00000.parquet
+```
+
+The manifest records the domain, level, profile version, value semantics, aggregation rule, coverage policy, source, and provenance.
+
+After creating a validated Arrow table and manifest:
+
+```python
+from geosquare_v2 import CellDataset
+
+dataset = CellDataset.from_table(
+    arrow_table,
+    manifest,
+    registry=registry,
+)
+dataset.write("datasets/population/")
+```
+
+Read it later:
+
+```python
+from geosquare_v2 import read_cell_dataset
+
+loaded = read_cell_dataset(
+    "datasets/population/",
+    registry=registry,
+)
+```
+
+The reader checks:
+
+- the sidecar manifest;
+- embedded Parquet metadata;
+- Arrow column types;
+- row counts;
+- GIDs;
+- packed and x/y identity fields;
+- duplicate rules; and
+- coverage or length ratios.
+
+A `cell_values` dataset has one row per unique GID. A `cell_contributions` dataset may repeat GIDs.
+
+See [CELL_DATASET_CONTRACT.md](CELL_DATASET_CONTRACT.md) for the full manifest and column rules.
+
+## Use case 6: read or write through S3-style storage
+
+### The problem
+
+Your data lives in object storage, but you do not want a second data format.
+
+### The solution
+
+Install the optional filesystem extra:
+
+```zsh
+python -m pip install -e ".[analytics,registry,table,filesystem]"
+```
+
+Then use the same dataset layout through fsspec:
+
+```python
+from geosquare_v2 import (
+    read_cell_dataset_filesystem,
+    write_cell_dataset_filesystem,
 )
 
-bigquery_sql = render_bigquery_projected_encoder(profile, routine="my_dataset.geosquare_id_encode")
-snowflake_sql = render_snowflake_projected_encoder(profile, routine="GEOSQUARE_ID_ENCODE")
-postgis_sql = render_postgis_projected_encoder(profile, routine="geosquare_id_encode")
+write_cell_dataset_filesystem(
+    dataset,
+    "s3://my-bucket/datasets/population/",
+)
+
+loaded = read_cell_dataset_filesystem(
+    "s3://my-bucket/datasets/population/",
+    registry=registry,
+)
 ```
 
-Generated UDFs encode **projected X/Y metres in the profile grid CRS**; they do not perform profile-specific WGS84/PROJ transformations. Transform longitude/latitude before calling them. BigQuery and Snowflake JavaScript UDFs emit packed IDs as strings because JavaScript numbers cannot safely represent every V2 signed `Int64`; the PostGIS function returns native `BIGINT`.
+For a real S3 filesystem, install the `s3` extra. The base package does not install `boto3`, `fsspec`, or `s3fs`.
 
-## Registry release and governance
+You can also query through the filesystem backend:
 
-The registry is a signed SQLite database at `src/geosquare_v2/db/registry.db`, trusted via a detached
-Ed25519 signature (`src/geosquare_v2/db/registry.db.sig`) computed over the raw database file bytes.
-`DbRegistryLoader` is fail-closed: it checks the signature, profile/boundary/scale hashes,
-CRS parseability, and the exact signed PROJ environment before profiles are available. A
-local PROJ upgrade or any artifact change requires a freshly generated and signed candidate
-database. Boundary files (`src/geosquare_v2/data/registry/boundaries/*.geojson`) remain
-plain files on disk and are unaffected by this database.
+```python
+from geosquare_v2 import query_cell_dataset_filesystem
 
-Never commit, distribute, or attach an Ed25519 private key. To create a new candidate
-database after approved profile/boundary changes:
-
-```zsh
-.venv/bin/python scripts/generate_release_candidates.py
-.venv/bin/python scripts/sign_registry_db.py \
-  --private-key /secure/path/geosquare-registry-private.pem \
-  --db src/geosquare_v2/db/registry.db \
-  --output src/geosquare_v2/db/registry.db.sig \
-  --key-id geosquare-registry-2026-09
+visible = query_cell_dataset_filesystem(
+    "s3://my-bucket/datasets/population/",
+    bbox=(106.7, -6.3, 106.9, -6.1),
+    registry=registry,
+)
 ```
 
-Review the generated diff, CRS definitions, distortion metadata, boundary provenance, and release authorization before signing. See [RELEASE_CANDIDATE.md](RELEASE_CANDIDATE.md) and [ARCHITECTURE_DECISIONS.md](ARCHITECTURE_DECISIONS.md) for the full process and rationale.
+Local queries use Parquet predicate pushdown. Filesystem-backed queries keep the same validation and result behavior through Arrow filtering.
 
-## Validation
+## Choosing a cell level
+
+Levels use the same hierarchy everywhere. The grid alternates 5x5 and 2x2 subdivisions.
+
+Common reference points:
+
+- level 9: about 1 km cells;
+- level 12: about 50 m cells;
+- level 14: about 5 m cells.
+
+The exact size is defined in each profile’s grid CRS. Choose the level from your use case:
+
+- use a coarser level for regional summaries;
+- use level 9 for many city-scale analyses;
+- use level 12 or finer for detailed local work.
+
+## Important things to know
+
+### Profiles are candidates
+
+The repository contains 11 ASEAN candidate domains. Some use static WGS84-style projected candidates. They are not final national-datum production profiles.
+
+### Boundaries do not change cell IDs
+
+A boundary policy only decides whether an application keeps a cell or contribution. It does not change the cell ID.
+
+### Do not use GID text for spatial ranges
+
+Use these fields for spatial filtering:
+
+```text
+domain
+level
+x_idx
+y_idx
+```
+
+A GID is an identifier. Its text order is not a geographic sort order.
+
+### Version your durable IDs
+
+Do not store only a bare GID in long-lived data. Prefer:
+
+```text
+geosquare:v2:<domain>:<gid>
+```
+
+## Common API names
+
+```python
+from geosquare_v2 import (
+    CellDataset,
+    aggregate_geometry_contributions,
+    aggregate_geometry_table_to_cells,
+    geometry_table_to_cells,
+    query_cell_dataset,
+    read_cell_dataset,
+    write_cell_dataset,
+)
+```
+
+Older names remain available for compatibility in parts of the API. New code should use the names above.
+
+## Development checks
+
+From the repository root:
 
 ```zsh
-.venv/bin/python -m compileall -q src scripts tests
-.venv/bin/pytest -q -W error::DeprecationWarning
+.venv/bin/python -B -m pytest -q
 .venv/bin/python -m pip check
 ```
 
-The focused suite covers scalar/GID/packed consistency, projected and WGS84 geometry, planar/equal-area fractional coverage, candidate limits, NumPy/Pandas/Arrow equivalence, UDF source invariants, table and aggregation operations, migration, boundary policies, and end-to-end paths through the signed 11-domain ASEAN candidate profiles.
+The current test suite covers the grid, registry, geometry conversion, dataset manifests, local Parquet storage, viewport queries, geometry aggregation, and optional filesystem backends.
 
-## Project layout
+## Documentation
+
+- [Complete documentation](docs/README.md)
+- [API guide](docs/02_API.md)
+- [Data and aggregation guide](docs/03_DATA_AND_AGGREGATION.md)
+- [Cell dataset contract](CELL_DATASET_CONTRACT.md)
+- [Boundary policy](BOUNDARY_POLICY.md)
+- [V1 to V2 migration guide](MIGRATION_V1_V2.md)
+- [Candidate release notes](RELEASE_CANDIDATE.md)
+- [Handover and next steps](HANDOVER.md)
+- [Implementation plan](IMPLEMENTATION_PLAN.md)
+
+## License and data sources
+
+The code is Apache-2.0 licensed.
+
+Boundary files have their own source licenses and attribution requirements. See:
 
 ```text
-src/geosquare_v2/db/                           Signed registry database (registry.db, registry.db.sig)
-src/geosquare_v2/                 Package source
-  data/registry/boundaries/       Boundary GeoJSON files and source attribution
-  db.py                           SQLite schema, MigrationTool, DbRegistryLoader
-  facade.py                       Registry-backed application API
-  conversion.py                   Point, line, and polygon conversion
-  table.py                        CSV, XLSX, Parquet table adapters
-  aggregation.py                  Numeric, category, ordinal, range aggregation
-  geometry.py                     Exact projected and densified WGS84 geometry
-  polyfill.py                     Bounded fractional coverage
-  batch.py                        NumPy, Pandas, Arrow encoders
-  warehouse.py                    BigQuery, Snowflake, PostGIS UDF renderers
-scripts/                          Candidate generation, migration, signing, and benchmarks
-tests/                            Focused conformance tests
-V2SPECS.md                        Normative V2 contract
-ARCHITECTURE_DECISIONS.md          Architecture decision record
-RELEASE_CANDIDATE.md               Candidate release instructions
+src/geosquare_v2/data/registry/boundaries/SOURCES.md
 ```
 
-## Further reading
-
-- [Changelog](CHANGELOG.md)
-- [Complete documentation](docs/README.md)
-- [V2 product contract](PRODUCT_CONTRACT_V2.md)
-- [ASEAN cross-system benchmark](ASEAN_CROSS_SYSTEM_BENCHMARK.md)
-- [ASEAN squareness benchmark](ASEAN_SQUARENESS_BENCHMARK.md)
-- [Grid system comparison](GRID_SYSTEM_COMPARISON.md)
-- [Data-to-grid contract](DATA_TO_GRID_CONTRACT.md)
-- [ASEAN profile review](ASEAN_PRIORITY_PROFILE_REVIEW.md)
-- [ASEAN profile decisions](profiles/ASEAN_PRIORITY_PROFILE_DECISIONS.json)
-- [Simple service API](SERVICE_API.md)
-- [Boundary policy guide](BOUNDARY_POLICY.md)
-- [V1 to V2 migration guide](MIGRATION_V1_V2.md)
-- [ASEAN coverage and projection plan](ASEAN_COVERAGE_PROJECTION.md)
-- [Crucial logic and CRS guide](CRUCIAL_LOGIC.md)
-- [V2 technical specification](V2SPECS.md)
-- [Architecture decisions](ARCHITECTURE_DECISIONS.md)
-- [Candidate release instructions](RELEASE_CANDIDATE.md)
-- [Boundary source attribution](src/geosquare_v2/data/registry/boundaries/SOURCES.md)
+Review those terms before redistributing the package or boundary data.
