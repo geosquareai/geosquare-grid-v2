@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "geosquare-grid-v2"
-version = "0.1.0"
+version = "0.1.0rc1"
 description = "Profile-driven hierarchical metric grid core for Geosquare V2."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Geosquare" }]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -47,6 +47,13 @@ analytics = [
   "pyproj==3.7.2",
   "shapely==2.1.2",
 ]
+filesystem = [
+  "fsspec==2025.7.0",
+]
+s3 = [
+  "fsspec==2025.7.0",
+  "s3fs==2025.7.0",
+]
 dev = [
   "pytest==8.4.2",
   "hypothesis==6.168.0",
@@ -61,6 +68,7 @@ geosquare_v2 = [
   "data/registry/boundaries/*.geojson",
   "data/registry/boundaries/*.json",
   "data/registry/boundaries/*.md",
+  "data/cell-dataset-manifest-v1.schema.json",
   "db/*.db",
   "db/*.sig",
 ]

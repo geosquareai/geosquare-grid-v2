@@ -177,6 +177,8 @@ All columns except reserved GeoSquare columns are user payload fields.
 Reserved fields are:
 
 ```text
+domain
+level
 gid
 uri
 packed_id
@@ -187,6 +189,7 @@ source_row
 coverage_ratio
 length_ratio
 assignment_method
+boundary_policy
 geometry_wkb
 ```
 

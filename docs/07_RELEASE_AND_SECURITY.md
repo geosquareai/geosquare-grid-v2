@@ -2,8 +2,8 @@
 
 ## 1. Current release state
 
-The project is a release candidate.
-
+The package target is `0.1.0rc1`, a technical candidate prepared locally only.
+It has not been uploaded to TestPyPI or PyPI, and this task performs no upload.
 The signed SQLite registry is distributed at:
 
 ```text
@@ -11,7 +11,10 @@ src/geosquare_v2/db/registry.db
 src/geosquare_v2/db/registry.db.sig
 ```
 
-The current signed candidate contains all 11 ASEAN domains. The profiles are still release candidates until datum, boundary, epoch, and production approval gates pass.
+The current signed candidate contains all 11 ASEAN domains. The profiles and
+boundaries remain candidates until datum, boundary, epoch, redistribution,
+package-size, and production-approval gates pass. See [NOTICE](../NOTICE) for
+the evidence-backed boundary attribution and open redistribution gate.
 
 ## 2. Release artifacts
 
@@ -20,12 +23,15 @@ A release contains:
 - package source;
 - signed registry database;
 - detached database signature;
-- trusted public key material;
 - profile metadata;
 - boundary files;
-- boundary source notes;
+- boundary source notes and `NOTICE`;
 - scale reports; and
 - reproducible build information.
+
+The trusted public key is an external verification input. It is not a private
+key and is not a substitute for keeping the new private signing key outside
+this repository and all package artifacts.
 
 The database and signature are a pair. Change one and regenerate the other.
 
@@ -116,34 +122,37 @@ Load the signed registry from the installed package.
 
 ## 8. Release gates
 
-Do not publish until:
+For this local `0.1.0rc1` preparation, verify:
 
-- no private key is in Git;
+- no private key is in Git, source inputs, or either candidate archive;
 - the clean package contains the database and signature;
 - the trusted public key verifies the signature;
 - the pinned PROJ environment passes;
 - scalar conformance tests pass;
 - geometry and boundary tests pass;
 - batch outputs match scalar outputs;
-- table and aggregation tests pass;
+- table, dataset, and aggregation tests pass;
 - migration fixtures pass;
-- country profiles pass approval; and
-- the release is reviewed by a human.
+- candidate profile and static-epoch status remain clearly non-production;
+- boundary attribution is present in [NOTICE](../NOTICE), with redistribution
+  approval still unresolved;
+- the candidate package size is explicitly reviewed; and
+- the full candidate wheel/sdist inspection and clean installs pass.
+
+No TestPyPI or PyPI upload, tag, commit, or push is part of this preparation.
 
 ## 9. Validation commands
 
 ```zsh
-python -m compileall -q src scripts tests
-python -m pytest -q -W error::DeprecationWarning
-python -m pip check
+.venv/bin/python -m compileall -q src scripts tests
+.venv/bin/python -B -m pytest -q
+.venv/bin/python -m pip check
+.venv/bin/twine check dist-candidate/*
 ```
 
-Also run:
-
-```zsh
-python scripts/benchmark_asean_profiles.py
-python scripts/benchmark_cross_system_asean.py
-```
+The current suite collects 195 tests. Candidate artifacts are built only in
+`dist-candidate/`; the tracked 0.1.0 files in `dist/` and tracked `.DS_Store`
+files are preserved and are not release inputs.
 
 ## 10. Do not edit signed artifacts by hand
 
@@ -155,3 +164,10 @@ Do not edit:
 - trusted release metadata.
 
 Change the source artifact. Regenerate the database. Review it. Sign it again.
+
+## 11. Candidate preparation boundary
+
+This task prepares and validates local `0.1.0rc1` artifacts only. It does not
+run a package upload command or contact TestPyPI/PyPI. The candidate remains
+blocked until a human approves boundary redistribution, technical-candidate
+geodetic status, and package size.

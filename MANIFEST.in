@@ -1,6 +1,8 @@
 include README.md
 include LICENSE
+include NOTICE
 include CHANGELOG.md
+include src/geosquare_v2/data/cell-dataset-manifest-v1.schema.json
 recursive-include docs *.md
 recursive-include boundaries *.geojson *.json *.md
 recursive-include profiles *.json

@@ -108,6 +108,8 @@
           "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
           "not": {
             "enum": [
+              "domain",
+              "level",
               "gid",
               "uri",
               "packed_id",
@@ -118,6 +120,7 @@
               "coverage_ratio",
               "length_ratio",
               "assignment_method",
+              "boundary_policy",
               "geometry_wkb"
             ]
           }

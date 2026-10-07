@@ -1,7 +1,12 @@
-# ASEAN V2 registry release candidate
+# GeoSquare Grid V2 `0.1.0rc1` technical candidate
 
-**Status:** candidate, not production
+**Package version:** `0.1.0rc1`
+**Status:** candidate, not production; prepared locally and not uploaded
 **Profile version:** `2.0.0-rc.2-asean`
+
+The package is a technical candidate only. No TestPyPI or PyPI upload is part
+of this preparation. Boundary attribution and the open redistribution gate are
+recorded in [NOTICE](NOTICE).
 
 This candidate contains all 11 ASEAN country domains.
 
@@ -109,22 +114,26 @@ BN KH ID LA MM MY PH SG TH TL VN
 
 ## Package validation
 
-Build both package formats:
+Build both package formats into the isolated candidate directory; do not reuse
+or regenerate the tracked historical `dist/` 0.1.0 artifacts:
 
 ```zsh
-.venv/bin/python -m build
+.venv/bin/python -m build --sdist --wheel --outdir dist-candidate
+.venv/bin/twine check dist-candidate/*
 ```
 
-The wheel and sdist must contain:
+The candidate wheel and sdist must contain:
 
 - the V2 Python package;
-- `registry.db`;
-- `registry.db.sig`;
-- all full boundary files;
-- boundary metadata; and
-- package metadata.
+- `registry.db` and `registry.db.sig`;
+- all full and simplified boundary files plus source metadata;
+- the runtime manifest schema; and
+- `NOTICE` and package metadata.
 
-Install each artifact into a clean Python 3.11+ environment. Load the registry again.
+The sdist also retains the documented release inputs. Install both candidate
+artifacts in clean environments and load the registry with an external trusted
+public-key input. A successful local build does not resolve the boundary
+redistribution, technical-candidate geodetic-status, or package-size blockers.
 
 ## Final approval before production
 
